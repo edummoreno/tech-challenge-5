@@ -17,7 +17,7 @@ ENV/
 .vscode/
 .idea/
 
-# Dados grandes (NÃO versionar)
+# Dados grandes
 dataset/
 yolo_dataset/
 data/
