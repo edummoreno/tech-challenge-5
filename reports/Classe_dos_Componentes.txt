@@ -1,0 +1,353 @@
+CLASSE DOS COMPONENTES
+========================================================================
+Total de componentes no data.yaml: 106
+Regras aplicadas:
+ - Nenhum componente fica sem classe.
+ - Classes pensadas para análise de risco STRIDE.
+========================================================================
+
+---------------------------------------
+01 — Identity and Access Control
+---------------------------------------
+Quantidade: 4
+
+1.  aws_identity_access_management_role
+2.  aws_identity_and_access_management
+3.  gcp_identity_and_access_management
+4.  microsoft_entra
+
+---------------------------------------
+02 — Secrets and Key Management
+---------------------------------------
+Quantidade: 2
+
+1.  aws_key_management_service
+2.  azure_key_vaults
+
+---------------------------------------
+03 — API Gateway and API Management
+---------------------------------------
+Quantidade: 3
+
+1.  api
+2.  aws_api_gateway
+3.  azure_api_management_services
+
+---------------------------------------
+04 — Content Delivery Network
+---------------------------------------
+Quantidade: 1
+
+1.  aws_cloudfront
+
+---------------------------------------
+05 — Developer and External Portal
+---------------------------------------
+Quantidade: 1
+
+1.  developer_portal
+
+---------------------------------------
+06 — Public Load Balancing
+---------------------------------------
+Quantidade: 6
+
+1.  gcp_cloud_load_balancing
+2.  aws_application_load_balancer
+3.  aws_elastic_load_balancing
+4.  aws_elastic_load_balancing_application_load_balancer
+5.  aws_elastic_load_balancing_network_load_balancer
+6.  azure_load_balancers
+
+---------------------------------------
+07 — Application Security Controls
+---------------------------------------
+Quantidade: 1
+
+1.  aws_waf
+
+---------------------------------------
+08 — Network Firewall
+---------------------------------------
+Quantidade: 1
+
+1.  azure_firewalls
+
+---------------------------------------
+09 — Network Segmentation
+---------------------------------------
+Quantidade: 1
+
+1.  azure_network_security_groups
+
+---------------------------------------
+10 — DNS and Traffic Routing
+---------------------------------------
+Quantidade: 2
+
+1.  aws_route_53
+2.  aws_route_53_hosted_zone
+
+---------------------------------------
+11 — Virtual Network Infrastructure
+---------------------------------------
+Quantidade: 6
+
+1.  aws_private_subnet
+2.  aws_public_subnet
+3.  aws_virtual_private_cloud
+4.  aws_vpc_virtual_private_cloud_vpc
+5.  azure_virtual_networks
+6.  gcp_virtual_private_cloud
+
+---------------------------------------
+12 — Virtual Machine Compute
+---------------------------------------
+Quantidade: 5
+
+1.  aws_ec2
+2.  aws_ec2_instance
+3.  aws_ec2_instances
+4.  azure_virtual_machine
+5.  gcp_compute_engine
+
+---------------------------------------
+13 — Auto Scaling and Elasticity
+---------------------------------------
+Quantidade: 4
+
+1.  aws_auto_scaling
+2.  aws_autoscaling
+3.  aws_ec2_auto_scaling
+4.  azure_vm_scale_sets
+
+---------------------------------------
+14 — Container Services
+---------------------------------------
+Quantidade: 4
+
+1.  aws_elastic_container_service
+2.  aws_elastic_container_service_container_2
+3.  aws_elastic_container_service_service
+4.  azure_container_instances
+
+---------------------------------------
+15 — Kubernetes Platforms
+---------------------------------------
+Quantidade: 3
+
+1.  aws_elastic_kubernetes_service
+2.  azure_kubernetes_services
+3.  gcp_kubernetes_engine
+
+---------------------------------------
+16 — Serverless Compute
+---------------------------------------
+Quantidade: 6
+
+1.  aws_lambda
+2.  aws_lambda_function
+3.  azure_function_apps
+4.  gcp_cloud_functions
+5.  gcp_cloud_run
+6.  azure_app_services
+
+---------------------------------------
+17 — Object Storage
+---------------------------------------
+Quantidade: 7
+
+1.  aws_simple_storage_service
+2.  aws_simple_storage_service_bucket
+3.  aws_simple_storage_service_bucket_with_objects
+4.  aws_simple_storage_service_s3_standard
+5.  aws_simple_storage_service_object
+6.  azure_storage_accounts
+7.  gcp_cloud_storage
+
+---------------------------------------
+18 — Block Storage
+---------------------------------------
+Quantidade: 2
+
+1.  aws_elastic_block_store
+2.  aws_elastic_block_store_volume
+
+---------------------------------------
+19 — Backup and Disaster Recovery
+---------------------------------------
+Quantidade: 1
+
+1.  aws_backup
+
+---------------------------------------
+20 — Relational Databases
+---------------------------------------
+Quantidade: 6
+
+1.  aws_aurora_amazon_rds_instance
+2.  aws_rds
+3.  azure_sql
+4.  azure_sql_database
+5.  azure_sql_server
+6.  gcp_cloud_sql
+
+---------------------------------------
+21 — Managed SQL Instances
+---------------------------------------
+Quantidade: 1
+
+1.  azure_sql_managed_instance
+
+---------------------------------------
+22 — NoSQL Databases
+---------------------------------------
+Quantidade: 3
+
+1.  aws_dynamodb
+2.  aws_dynamodb_table
+3.  azure_cosmos_db
+
+---------------------------------------
+23 — In Memory Cache
+---------------------------------------
+Quantidade: 1
+
+1.  aws_elasticache
+
+---------------------------------------
+24 — Analytics and Data Warehouse
+---------------------------------------
+Quantidade: 4
+
+1.  aws_redshift
+2.  azure_synapse_analytics
+3.  gcp_bigquery
+4.  azure_databricks
+
+---------------------------------------
+25 — Search and Index Platforms
+---------------------------------------
+Quantidade: 1
+
+1.  solr
+
+---------------------------------------
+26 — Messaging and Event Streaming
+---------------------------------------
+Quantidade: 6
+
+1.  aws_simple_notification_service
+2.  aws_simple_notification_service_topic
+3.  aws_simple_queue_service
+4.  aws_simple_queue_service_queue
+5.  azure_event_hubs
+6.  gcp_pubsub
+
+---------------------------------------
+27 — Email Services
+---------------------------------------
+Quantidade: 1
+
+1.  aws_simple_email_service
+
+---------------------------------------
+28 — Workflow and Orchestration
+---------------------------------------
+Quantidade: 2
+
+1.  azure_logic_apps
+2.  logic_apps
+
+---------------------------------------
+29 — Data Integration and ETL
+---------------------------------------
+Quantidade: 1
+
+1.  azure_data_factories
+
+---------------------------------------
+30 — Enterprise Internal Systems
+---------------------------------------
+Quantidade: 1
+
+1.  sei/sip
+
+---------------------------------------
+31 — Monitoring and Telemetry
+---------------------------------------
+Quantidade: 3
+
+1.  aws_cloudwatch
+2.  azure_application_insights
+3.  azure_monitor
+
+---------------------------------------
+32 — Audit Logging
+---------------------------------------
+Quantidade: 1
+
+1.  aws_cloud_trail
+
+---------------------------------------
+33 — Infrastructure Provisioning
+---------------------------------------
+Quantidade: 2
+
+1.  aws_cloudformation
+2.  aws_cloudformation_template
+
+---------------------------------------
+34 — Organizational Scope and Resource Management
+---------------------------------------
+Quantidade: 3
+
+1.  aws_region
+2.  azure_resource_groups
+3.  resource_group
+
+---------------------------------------
+35 — DevOps and CICD Platforms
+---------------------------------------
+Quantidade: 1
+
+1.  azure_devops
+
+---------------------------------------
+36 — Human Actors
+---------------------------------------
+Quantidade: 1
+
+1.  user
+
+---------------------------------------
+37 — External SaaS Services
+---------------------------------------
+Quantidade: 1
+
+1.  sass_services
+
+---------------------------------------
+38 — AI and Machine Learning Platforms
+---------------------------------------
+Quantidade: 4
+
+1.  azure_machine_learning
+2.  azure_machine_learning_studio_workspaces
+3.  azure_openai
+4.  gcp_vertex_ai
+
+---------------------------------------
+39 — File Storage and Shared Filesystems
+---------------------------------------
+Quantidade: 1
+
+1.  aws_elactic_file_system(nfs)_multi-az
+
+---------------------------------------
+40 — Generic Cloud Services
+---------------------------------------
+Quantidade: 2
+
+1.  aws_cloud
+2.  azure_services

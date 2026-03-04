@@ -1,0 +1,29 @@
+nome_imagem,id_componente,nome_componente,classe_componente,quantidade
+arquitetura-aws.png,19,aws_elactic_file_system(nfs)_multi-az,File Storage and Shared Filesystems,1
+arquitetura-aws.png,36,aws_public_subnet,Virtual Network Infrastructure,4
+arquitetura-aws.png,54,aws_waf,Application Security Controls,1
+arquitetura-aws.png,103,sei/sip,Enterprise Internal Systems,3
+arquitetura-aws.png,12,aws_cloudwatch,Monitoring and Telemetry,1
+arquitetura-aws.png,11,aws_cloudfront,Content Delivery Network,1
+arquitetura-aws.png,6,aws_backup,Backup and Disaster Recovery,1
+arquitetura-aws.png,32,aws_key_management_service,Secrets and Key Management,1
+arquitetura-aws.png,7,aws_cloud,Generic Cloud Services,1
+arquitetura-aws.png,39,aws_region,Organizational Scope and Resource Management,1
+arquitetura-aws.png,37,aws_rds,Relational Databases,2
+arquitetura-aws.png,42,aws_simple_email_service,Email Services,1
+arquitetura-aws.png,2,aws_application_load_balancer,Public Load Balancing,3
+arquitetura-aws.png,5,aws_autoscaling,Auto Scaling and Elasticity,2
+arquitetura-aws.png,8,aws_cloud_trail,Audit Logging,1
+arquitetura-aws.png,105,user,Human Actors,1
+arquitetura-aws.png,104,solr,Search and Index Platforms,1
+arquitetura-aws.png,52,aws_virtual_private_cloud,Virtual Network Infrastructure,1
+arquitetura-aws.png,29,aws_elasticache,In Memory Cache,1
+arquitetura-aws.png,35,aws_private_subnet,Virtual Network Infrastructure,3
+arquitetura-azure.png,100,microsoft_entra,Identity and Access Control,2
+arquitetura-azure.png,86,developer_portal,Developer and External Portal,1
+arquitetura-azure.png,101,resource_group,Organizational Scope and Resource Management,2
+arquitetura-azure.png,0,api,API Gateway and API Management,2
+arquitetura-azure.png,76,azure_services,Generic Cloud Services,1
+arquitetura-azure.png,105,user,Human Actors,1
+arquitetura-azure.png,102,sass_services,External SaaS Services,1
+arquitetura-azure.png,99,logic_apps,Workflow and Orchestration,1
