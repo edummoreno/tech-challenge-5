@@ -1,0 +1,62 @@
+{
+  "class_id": "39",
+  "class_name": "File Storage and Shared Filesystems",
+  "description": "Ao contrário dos armazenamentos de objetos (como o S3) que funcionam via HTTP, os sistemas de arquivos elásticos ou NFS compartilhados acoplam-se diretamente ao nível do sistema operacional de múltiplos contêineres ou máquinas virtuais em simultâneo. A principal ameaça prende-se com os controles granulares POSIX e com o raio de impacto de um ataque de Ransomware, uma vez que uma única máquina infectada com acesso de escrita a esta rede consegue corromper os arquivos de todo o parque computacional compartilhado.",
+  "components": [
+    "aws_elactic_file_system(nfs)_multi-az"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Montagem do sistema de arquivos por endereços IP ou instâncias fraudulentas.",
+      "scenario": "O sistema de arquivos compartilhado depende de controles legados e confia cegamente numa sub-rede (10.0.0.0/24). Um atacante compromete uma máquina básica nessa rede, que não deveria acessar o armazenamento principal, mas como a máquina está no intervalo autorizado, consegue montar a partilha NFS livremente.",
+      "countermeasures": [
+        "Desativar a autorização baseada apenas no IP. Integrar a montagem (Mounting) com permissões IAM rigorosas no nível da infraestrutura.",
+        "Configurar Pontos de Acesso (Access Points) para impor identidades e diretórios raiz específicos consoante a aplicação que solicita a montagem."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Ataques de Ransomware encriptando sistemas compartilhados.",
+      "scenario": "Um malware entra no ambiente através de um endpoint comprometido que possui o sistema compartilhado montado com permissão de leitura e escrita. O malware percorre os arquivos de rede, encriptando tudo a grande velocidade e paralisando todas as aplicações dependentes.",
+      "countermeasures": [
+        "Executar a maioria das aplicações em modo de montagem \"Apenas Leitura\" (Read-Only), limitando permissões de escrita apenas a microsserviços indispensáveis.",
+        "Habilitar sistemas de cópias de segurança automáticas com retenção inalterável (Cofres) integrados nativamente com o sistema de arquivos elástico."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Alteração de arquivos críticos sem rastreabilidade no nível da API ou do Arquivo.",
+      "scenario": "Um colaborador desonesto exclui arquivos compartilhados vitais para os sistemas financeiros ou logísticos. Como o volume montado aparenta ser apenas uma pasta local para o sistema operacional, os registros de exclusão não demonstram que IP ou função desencadeou a ação na rede, o que dificulta incriminações.",
+      "countermeasures": [
+        "Ativar alertas avançados de auditoria e métricas de desempenho para detectar picos anômalos de operações destrutivas ou criação acelerada de arquivos, permitindo agir sobre as infrações a tempo."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Vazamentos causados pela transmissão de arquivos não encriptados pela rede compartilhada.",
+      "scenario": "A comunicação do protocolo (como NFS v4 ou SMB) não foi configurada para utilizar túneis TLS encriptados entre as máquinas virtuais e o sistema EFS. Um invasor que se infiltre na VNet intercepta pacotes na rede interna e reconstrói arquivos financeiros a partir do tráfego.",
+      "countermeasures": [
+        "Exigir sempre a Criptografia em Trânsito (TLS) como um parâmetro inflexível durante as configurações de montagem (Mount Settings) no sistema operacional hospedeiro.",
+        "Certificar a Criptografia em Repouso dos sistemas subjacentes utilizando uma chave gerenciada exclusiva da organização (KMS CMK)."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Esgotamento compartilhado da cota de disco (Quota Exhaustion).",
+      "scenario": "Vários microsserviços escrevem no mesmo sistema. Um serviço entra num loop infindável e escreve registros errôneos ininterruptamente até lotar a totalidade dos terabytes disponibilizados. As outras aplicações críticas, impossibilitadas de escrever novos dados, colapsam abruptamente.",
+      "countermeasures": [
+        "Monitorar rigorosamente o volume disponível do disco virtual.",
+        "Sempre que tecnologicamente exequível, aplicar cotas de volume no nível do usuário ou limitar as pastas compartilhadas associadas a determinadas aplicações para restringir o consumo e limitar danos compartilhados."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Evasão de isolamento através de permissões POSIX frouxas.",
+      "scenario": "Todos os usuários do sistema montam a partilha NFS sob o ID de usuário de origem (root ou UID estático). Isto significa que o atacante que ganhe controle num dos servidores com privilégios limitados consegue facilmente criar, modificar ou ler pastas de outros processos confidenciais devido à paridade de usuários sem controles rigorosos.",
+      "countermeasures": [
+        "Forçar o esmagamento da identidade do usuário (Root Squashing), mapeando tentativas de montagem a partir do administrador para um perfil de rede \"sem privilégios\" ou bloqueando a leitura não justificada de outras raízes locais."
+      ]
+    }
+  ]
+}

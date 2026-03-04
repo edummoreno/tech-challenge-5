@@ -1,0 +1,65 @@
+{
+  "class_id": "24",
+  "class_name": "Analytics and Data Warehouse",
+  "description": "Os Data Warehouses e plataformas de Analytics consolidam os dados de toda a organização em um único repositório para Inteligência de Negócios (BI) e treinamento de Machine Learning. Eles são as \"joias da coroa\" corporativas. A segurança foca na proteção contra extração massiva, controle rígido sobre ferramentas de BI (que frequentemente usam credenciais compartilhadas fracas) e prevenção de ataques de negação de carteira (consultas analíticas extremamente custosas).",
+  "components": [
+    "aws_redshift",
+    "azure_synapse_analytics",
+    "gcp_bigquery",
+    "azure_databricks"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Vazamento de credenciais genéricas de ferramentas de integração de dados (ETL/BI).",
+      "scenario": "Um painel de relatórios (Dashboard) conecta-se ao BigQuery usando uma Conta de Serviço genérica (bi-viewer-account). A chave dessa conta é exposta ou o próprio painel sofre um desvio de função. O atacante usa essa mesma credencial válida para realizar consultas locais e roubar dados agregados do negócio.",
+      "countermeasures": [
+        "Evitar credenciais genéricas compartilhadas; implementar federação de identidade (Single Sign-On) nas ferramentas de BI, garantindo que o Data Warehouse registre exatamente qual usuário humano final executou a consulta (Identity Passthrough)."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Corrupção de modelos analíticos pela manipulação da camada bruta de dados (Data Lake).",
+      "scenario": "O Data Warehouse ingere dados de um bucket S3 de \"dados brutos\". O atacante compromete esse bucket (camada de origem) e injeta registros financeiros falsos. A plataforma de Analytics ingere essa sujeira rotineiramente, gerando relatórios corporativos fraudados e envenenando os algoritmos da empresa.",
+      "countermeasures": [
+        "Isolar e configurar como \"Somente Leitura\" (Read-Only) as áreas de armazenamento do Data Lake consumidas pelos clusters de Analytics.",
+        "Criar pipelines de dados baseados em camadas (Bronze, Silver, Gold), com validações estritas de esquema e integridade antes da consolidação no repositório final de análise."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Extração massiva de inteligência de negócios sem auditoria de conteúdo de queries.",
+      "scenario": "Um cientista de dados ou cibercriminoso executa consultas vastas extraindo a tabela inteira de salários da empresa. Os logs do sistema indicam apenas que \"uma sessão foi aberta\", mas a funcionalidade de auditoria do texto da consulta SQL está desativada, dificultando a comprovação jurídica do vazamento.",
+      "countermeasures": [
+        "Habilitar obrigatoriamente logs de auditoria detalhados da plataforma de dados (como os BigQuery Audit Logs ou Redshift Audit Logging), configurados para registrar ativamente a instrução SQL exata executada e a identidade do solicitante."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exfiltração de dados para ambientes externos autorizados (Unload Abuse).",
+      "scenario": "O atacante obtém acesso a um ambiente de Notebooks de ciência de dados (como Azure Databricks ou Vertex AI). Usando comandos nativos de exportação (ex: UNLOAD ou bibliotecas Spark), ele compacta e envia milhões de registros diretamente para um contêiner de armazenamento externo ou conta de nuvem particular.",
+      "countermeasures": [
+        "Restringir os destinos de exfiltração utilizando perímetros de segurança nativos (como o VPC Service Controls no GCP ou Private Endpoints estritos na AWS/Azure), bloqueando transferências para contas externas à organização.",
+        "Adotar criptografia em nível de coluna para dados altamente sensíveis, garantindo que usuários de BI leiam apenas metadados mascarados."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Negação de Carteira através de Processamento Analítico (EEDoS).",
+      "scenario": "Plataformas Serverless ou sob demanda (como BigQuery) cobram por volume de bytes processados. Um atacante intencionalmente (ou um usuário descuidado) executa um Produto Cartesiano não filtrado em tabelas com petabytes de dados. A consulta custa milhares de dólares em poucos minutos de execução, sangrando financeiramente o projeto.",
+      "countermeasures": [
+        "Configurar limites máximos rigorosos de bytes faturados (Bytes Billed Limits) por consulta e por usuário/projeto diário.",
+        "Implementar gerenciamento de carga de trabalho (Workload Management - WLM) ou cotas fixas de capacidade de computação e tempos de espera (Query Timeouts) para interromper automaticamente execuções longas."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Fuga de isolamento em ambientes de Notebooks corporativos interativos.",
+      "scenario": "Em uma plataforma colaborativa como Databricks, um analista júnior obtém permissão para executar código. Ele injeta comandos OS ou manipula o código do cluster subjacente para extrair as chaves de infraestrutura da Role do cluster, elevando seus privilégios para além do acesso restrito à tabela que ele originalmente tinha.",
+      "countermeasures": [
+        "Isolar espaços de trabalho (Workspaces) por nível de sensibilidade de dados, utilizando controles severos nos clusters.",
+        "Habilitar o modo de Controle de Acesso de Alta Simultaneidade ou User Isolation, e bloquear a instalação arbitrária de bibliotecas ou modificação de configuração do cluster por não administradores."
+      ]
+    }
+  ]
+}

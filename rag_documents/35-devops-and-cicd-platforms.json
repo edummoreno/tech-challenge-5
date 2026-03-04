@@ -1,0 +1,62 @@
+{
+  "class_id": "35",
+  "class_name": "DevOps and CICD Platforms",
+  "description": "As plataformas de Integração e Entrega Contínuas (CI/CD) gerenciam o ciclo de vida do código desde o repositório até a nuvem. São alvos de elevadíssimo valor (Ataques à Cadeia de Suprimentos/Supply Chain). Comprometer a plataforma de DevOps significa que o atacante pode envenenar o código na origem, enviando vulnerabilidades diretamente para a produção através das rotas legítimas de implantação da empresa.",
+  "components": [
+    "azure_devops"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de Commits ou roubo de Tokens de Acesso Pessoal (PATs).",
+      "scenario": "Um desenvolvedor deixa o seu Personal Access Token em um arquivo ou ferramenta de terceiros. O atacante utiliza este token para injetar código malicioso no repositório. Como o commit aparece com o nome do desenvolvedor legítimo, a revisão de código pode não suspeitar da fraude.",
+      "countermeasures": [
+        "Exigir a assinatura criptográfica de commits (GPG/SSH Signatures) para comprovar a autenticidade do autor.",
+        "Restringir o tempo de vida (TTL) e os escopos dos Tokens de Acesso Pessoal, preferindo a autenticação integrada por identidade sempre que possível."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Adulteração do Pipeline (Pipeline Poisoning).",
+      "scenario": "Um usuário com permissão de escrita no repositório edita o arquivo de configuração do pipeline (ex: azure-pipelines.yml) para adicionar um passo extra que executa um script malicioso. Este script exfiltra as variáveis de ambiente (credenciais de produção) da plataforma de CI/CD durante o próximo processo de build.",
+      "countermeasures": [
+        "Proteger as branches principais (Branch Policies) exigindo revisões obrigatórias (Pull Requests aprovados por múltiplos pares) para qualquer alteração ao código ou às definições de pipeline.",
+        "Configurar os pipelines para avaliarem arquivos YAML provenientes de origens não confiáveis (como forks) em ambientes isolados e sem acesso a segredos."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Alteração direta em produção ignorando a esteira de CI/CD.",
+      "scenario": "Para corrigir um erro urgente, um administrador altera diretamente a configuração do servidor na nuvem, em vez de corrigir o código no repositório Azure DevOps. Sem o registro no controle de versões, perde-se a rastreabilidade (repúdio) e gera-se um desvio de configuração (drift) perigoso.",
+      "countermeasures": [
+        "Retirar privilégios de escrita manual nos ambientes de produção, forçando que todas as alterações ocorram estritamente através do pipeline auditado da plataforma de DevOps."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Vazamento de segredos nos registros de Build ou artefatos compilados.",
+      "scenario": "Durante o processo de compilação, o pipeline faz o print (eco) de chaves de API para o terminal por erro de script. Estes registros de build ficam gravados no Azure DevOps e são acessíveis a toda a equipe de engenharia, vazando credenciais vitais.",
+      "countermeasures": [
+        "Utilizar ferramentas nativas de ofuscação de segredos no pipeline, garantindo que senhas sejam substituídas por asteriscos (***) nos registros textuais.",
+        "Implementar varreduras automáticas de segredos (Secret Scanning) que interrompam o pipeline caso seja detectada uma chave em texto claro no código fonte."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão dos Agentes de Build (Runners) ou ataque de exclusão.",
+      "scenario": "Um atacante interno submete milhares de tarefas de compilação pesadas simultaneamente. Isso ocupa todos os Self-hosted Agents ou esgota o limite de minutos mensais da plataforma em nuvem, impedindo que correções críticas de segurança da empresa sejam implementadas.",
+      "countermeasures": [
+        "Configurar limites de concorrência e cotas de execução por projeto ou equipe.",
+        "Monitorar a utilização e o tempo de fila dos agentes de compilação para detectar anomalias no comportamento de submissão de tarefas."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Conexões de Serviço (Service Connections) com privilégios excessivos.",
+      "scenario": "O Azure DevOps está conectado à conta de nuvem de produção através de uma Service Connection que possui a função de Contributor (Colaborador) global. Se o repositório ou o pipeline forem comprometidos, o atacante herda este privilégio massivo, podendo assumir o controle de toda a infraestrutura em nuvem através de um simples comando injetado no processo de implantação.",
+      "countermeasures": [
+        "Aplicar segmentação de privilégios nas Conexões de Serviço: utilizar identidades distintas (Identidades Gerenciadas/Federadas) para implantação em Desenvolvimento, Homologação e Produção, limitadas aos Grupos de Recursos estritamente necessários."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "class_id": "01",
+  "class_name": "Identity and Access Control",
+  "description": "Esta é a classe mais crítica (\"Componentes de Identidade\"), pois a identidade é o novo perímetro de segurança na nuvem.",
+  "components": [
+    "aws_identity_access_management_role",
+    "aws_identity_and_access_management",
+    "gcp_identity_and_access_management",
+    "microsoft_entra"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Comprometimento de credenciais de usuário ou chaves de acesso de serviço.",
+      "scenario": "Um desenvolvedor comita acidentalmente chaves de acesso (Access Keys) de longo prazo num repositório Git público. Um bot varre o GitHub, encontra as chaves e assume a identidade desse usuário na conta da AWS/Azure.",
+      "countermeasures": [
+        "Impor MFA (Múltiplo Fator de Autenticação) para todos os usuários humanos.",
+        "Utilizar federação de identidade (SSO) para evitar a criação de usuários IAM locais.",
+        "Implementar ferramentas de pre-commit hooks (como git-secrets ou trufflehog) para bloquear commits com credenciais."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Modificação não autorizada de políticas de confiança (Trust Policies) ou permissões.",
+      "scenario": "Um atacante com permissão limitada de edição altera a \"Trust Relationship\" de uma Role crítica, permitindo que uma conta externa controlada por ele assuma essa Role.",
+      "countermeasures": [
+        "Gerenciar todo o IAM via Código (IaC - Terraform/CloudFormation) e bloquear alterações manuais no console.",
+        "Implementar detecção de desvio (Drift Detection) para alertar sobre mudanças feitas fora do pipeline.",
+        "Usar Service Control Policies (SCPs) na AWS ou Management Locks no Azure para impedir a modificação de Roles de infraestrutura crítica."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Falta de rastreabilidade sobre quem autorizou ou realizou uma ação.",
+      "scenario": "Uma conta genérica compartilhada chamada admin-team deleta um recurso produtivo. Não é possível identificar qual membro da equipe realizou a ação, pois todos usam a mesma credencial.",
+      "countermeasures": [
+        "Proibir o uso de contas compartilhadas; cada identidade deve ser nominal.",
+        "Centralizar logs de auditoria (CloudTrail, Azure Monitor) em um Bucket/Storage com Object Lock (WORM - Write Once, Read Many) para evitar que os logs sejam apagados."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Reconhecimento (Reconnaissance) da estrutura de permissões e recursos.",
+      "scenario": "Um usuário malicioso usa permissões de listagem (iam:ListRoles, iam:ListUsers) para mapear toda a hierarquia da empresa e identificar contas com privilégios excessivos para serem alvos de ataque lateral.",
+      "countermeasures": [
+        "Restringir permissões de 'List' e 'Get' apenas ao estritamente necessário (Least Privilege).",
+        "Monitorar padrões de chamadas de API de 'Discovery' e utilizar ferramentas como o IAM Access Analyzer para identificar de forma proativa políticas permissivas demais."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Bloqueio de acesso administrativo ou exaustão de cotas.",
+      "scenario": "Um script mal configurado cria milhares de Roles ou Políticas IAM em um loop, atingindo a cota máxima da conta (Service Quotas) e impedindo que a infraestrutura legítima escale ou crie novos recursos.",
+      "countermeasures": [
+        "Monitorar as Service Quotas do IAM e configurar alarmes quando atingirem 80% de uso.",
+        "Ter contas de \"Break-glass\" (acesso de emergência) monitoradas e guardadas em cofre físico/digital para casos de falha no provedor de identidade (IdP)."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Exploração de permissões para obter acesso administrativo (Privilege Escalation).",
+      "scenario": "Um usuário tem a permissão iam:PassRole e ec2:RunInstances. Ele cria uma instância EC2, anexa uma Role de \"Administrador\" a ela, loga na instância e usa as credenciais da máquina para virar Admin total da conta.",
+      "countermeasures": [
+        "Restringir severamente a permissão iam:PassRole, exigindo que o recurso alvo seja especificado (Resource: ARN).",
+        "Usar Permissions Boundaries para garantir que, mesmo que um usuário crie um novo usuário/role, ele não possa conceder mais permissões do que ele próprio possui."
+      ]
+    }
+  ]
+}

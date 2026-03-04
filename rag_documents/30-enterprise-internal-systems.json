@@ -1,0 +1,64 @@
+{
+  "class_id": "30",
+  "class_name": "Enterprise Internal Systems",
+  "description": "Sistemas internos empresariais englobam as plataformas de gestão (como ERPs, sistemas de RH, ou plataformas de gestão de documentos eletrônicos como o SEI - Sistema Eletrônico de Informações). O principal desafio de segurança aqui é o falso senso de confiança: como esses sistemas operam \"dentro de casa\" (intranet) ou para usuários autenticados, frequentemente possuem menos proteções contra movimentos laterais, validação de entradas deficiente ou falta de criptografia interna em comparação com aplicações voltadas para a internet.",
+  "components": [
+    "sei/sip"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Sequestro de Sessão (Session Hijacking) ou bypass de autenticação interna.",
+      "scenario": "O sistema interno não utiliza HTTPS na intranet ou possui controle de sessão fraco (ex: cookies sem as flags Secure e HttpOnly). Um atacante na mesma rede corporativa (ou via VPN comprometida) intercepta o tráfego, rouba o cookie de sessão do Diretor de RH e acessa o sistema passando-se por ele.",
+      "countermeasures": [
+        "Forçar o uso de HTTPS/TLS em toda a comunicação interna (Zero Trust).",
+        "Integrar o sistema de gestão ao provedor de identidade corporativo (SSO/SAML/OIDC), exigindo MFA obrigatório mesmo quando o usuário estiver conectado fisicamente no escritório ou VPN."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Fraude documental, injeção de SQL ou adulteração de fluxos de aprovação.",
+      "scenario": "Um funcionário mal-intencionado descobre uma falha na API interna do sistema de gestão de documentos (SEI). Ele manipula os parâmetros da requisição para injetar uma assinatura falsa em um contrato ou alterar o valor de uma licitação salva no banco de dados, burlando as regras de negócio da interface.",
+      "countermeasures": [
+        "Validar estritamente todas as entradas do lado do servidor (Server-side Validation), utilizando ORMs para evitar SQL Injection.",
+        "Implementar assinaturas digitais com certificados ICP ou hashes imutáveis nos documentos para garantir a integridade dos arquivos armazenados."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Operações administrativas fraudulentas via contas genéricas.",
+      "scenario": "Uma alteração crítica em um processo é realizada pelo usuário admin_sistema. Como a senha desse usuário é compartilhada entre a equipe de TI e suporte para \"facilitar o trabalho\", em caso de vazamento de dados ou fraude interna não é possível responsabilizar o autor da ação.",
+      "countermeasures": [
+        "Proibir terminantemente o compartilhamento de credenciais administrativas.",
+        "Registrar trilhas de auditoria abrangentes (Auditoria de Aplicação) contendo \"Quem, O que, Quando e Onde (IP)\" para cada ação de leitura, criação, alteração ou exclusão de registros sensíveis."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição massiva por falha em controle de acesso a nível de registro (IDOR).",
+      "scenario": "Um funcionário acessa seu próprio contracheque pela URL sistema/rh/docs?id=1001. Ele altera manualmente o id na URL para 1002 e a aplicação retorna o contracheque do colega de trabalho sem verificar se ele tinha permissão para visualizar aquele documento específico (Insecure Direct Object Reference).",
+      "countermeasures": [
+        "Implementar Controle de Acesso Baseado em Atributos/Papéis (ABAC/RBAC) no backend, sempre verificando se a sessão do usuário logado tem autorização explícita para o recurso sendo solicitado antes de retornar o dado.",
+        "Mascarar ou criptografar campos sensíveis (PII, salários) nas respostas da API para usuários que não possuam perfil gerencial ou de auditoria."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Paralisação do sistema corporativo devido a lentidão sistêmica provocada.",
+      "scenario": "Um usuário (ou script automatizado de extração de relatórios) dispara múltiplas consultas de BI não otimizadas diretamente no banco de dados transacional durante o horário de expediente. Isso gera locks nas tabelas principais, paralisando a operação da empresa inteira.",
+      "countermeasures": [
+        "Segregar cargas de trabalho: direcionar requisições de extração de relatórios pesados para Réplicas de Leitura (Read Replicas) ou Data Warehouses, poupando o banco de dados principal.",
+        "Aplicar limites de taxa de requisição (Rate Limiting) e paginação obrigatória de resultados nas APIs internas."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Fuga de contexto operacional por exploração de vulnerabilidades da aplicação.",
+      "scenario": "Um usuário comum descobre que a plataforma interna sofre de uma falha de Cross-Site Scripting (XSS) armazenado. Ele envia uma mensagem com payload malicioso via sistema de chamados de suporte. Quando o administrador de TI abre o chamado, o script executa no navegador dele e cria secretamente uma nova conta administrativa para o invasor.",
+      "countermeasures": [
+        "Codificar corretamente os dados de saída (Output Encoding) e configurar cabeçalhos de segurança (Content Security Policy - CSP) nas interfaces web internas.",
+        "Realizar varreduras periódicas de vulnerabilidades em aplicações internas (DAST/SAST) com o mesmo rigor aplicado aos sistemas voltados ao público externo."
+      ]
+    }
+  ]
+}

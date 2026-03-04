@@ -1,0 +1,63 @@
+{
+  "class_id": "34",
+  "class_name": "Organizational Scope and Resource Management",
+  "description": "Esta classe define a fronteira lógica e de gerenciamento dos recursos (Grupos de Recursos, Assinaturas, Regiões). É aqui que se aplicam as políticas de governança e os controles de faturamento de mais alto nível. O risco principal reside na herança de permissões: um usuário que obtenha acesso ao Grupo de Recursos ganha, por padrão, controle sobre todos os servidores, bancos de dados e redes contidos no seu interior.",
+  "components": [
+    "aws_region",
+    "azure_resource_groups",
+    "resource_group"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de identidade no nível da gestão da assinatura.",
+      "scenario": "Um atacante obtém as credenciais de um Administrador de Assinatura ou utiliza um token de sessão roubado para se autenticar no portal da nuvem, passando a agir como o proprietário de todo o Grupo de Recursos.",
+      "countermeasures": [
+        "Exigir Autenticação Multifator (MFA) obrigatória baseada em hardware (chaves FIDO2) para todos os usuários com privilégios de gerenciamento de recursos ou assinaturas.",
+        "Implementar políticas de Acesso Condicional, restringindo o acesso aos portais de gerenciamento da nuvem a partir de dispositivos gerenciados pela organização e localizações de rede conhecidas."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Adulteração de Políticas de Gestão (Policy Tampering) e Tags.",
+      "scenario": "Um invasor interno altera as tags (etiquetas) de um Grupo de Recursos crítico de \"Produção\" para \"Desenvolvimento\". Isso burla as ferramentas de segurança automatizadas que ignoram ambientes de teste, permitindo-lhe implementar configurações inseguras sem disparar alarmes.",
+      "countermeasures": [
+        "Utilizar o Controle de Acesso Baseado em Funções (RBAC) para separar quem pode criar recursos de quem pode alterar as Tags e Políticas de Governança.",
+        "Implementar políticas no nível da nuvem (ex: Azure Policy ou AWS SCPs) que bloqueiem a alteração ou remoção de tags obrigatórias."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Exclusão de grupos de recursos inteiros sem auditoria rigorosa.",
+      "scenario": "Um administrador exclui um Grupo de Recursos, o que destrói em cascata dezenas de bancos de dados e máquinas virtuais. Se os registros de auditoria do plano de controle (Control Plane) não estiverem centralizados em uma conta isolada, a ação não poderá ser atribuída inequivocamente ao responsável.",
+      "countermeasures": [
+        "Garantir que os registros de atividade da plataforma (ex: Azure Activity Logs) não possam ser desativados no nível do Grupo de Recursos e sejam redirecionados para um SIEM inalterável."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição da topologia de recursos através de permissões de leitura excessivas.",
+      "scenario": "É concedida permissão de Reader (Leitor) a todos os colaboradores no nível da assinatura principal. Um usuário mal-intencionado consegue listar todos os serviços, identificar as tecnologias utilizadas e mapear as vulnerabilidades da arquitetura a partir de metadados antes de planejar um ataque.",
+      "countermeasures": [
+        "Aplicar o Princípio do Menor Privilégio na delegação de acessos; o acesso de leitura deve ser concedido apenas ao Grupo de Recursos específico no qual o usuário trabalha, e não globalmente."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exclusão em massa ou bloqueio regional.",
+      "scenario": "Um atacante ou um erro em um script de automação (Terraform) executa um comando de exclusão no nível do Grupo de Recursos. Como o comando é aplicado à \"pasta\" principal, todos os recursos da aplicação de produção são apagados instantaneamente, causando uma indisponibilidade total irrecuperável a curto prazo.",
+      "countermeasures": [
+        "Aplicar Bloqueios de Gerenciamento (Resource Locks - CanNotDelete) obrigatórios em todos os Grupos de Recursos que contenham ambientes produtivos."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Propagação de privilégios de gestão (Role Assignment Escalation).",
+      "scenario": "Um usuário possui a função de User Access Administrator para um Grupo de Recursos. Ele abusa dessa permissão para atribuir a si próprio a função de Owner (Proprietário), permitindo-lhe acessar os dados internos (plano de dados) de um Key Vault alojado dentro desse grupo.",
+      "countermeasures": [
+        "Monitorar e auditar continuamente as alterações nas atribuições de funções (IAM) através de ferramentas de Gestão de Direitos na Nuvem (CIEM).",
+        "Utilizar mecanismos de elevação just-in-time (JIT), como o Azure AD Privileged Identity Management (PIM), para limitar o tempo de exposição de privilégios elevados."
+      ]
+    }
+  ]
+}

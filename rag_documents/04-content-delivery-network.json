@@ -1,0 +1,64 @@
+{
+  "class_id": "04",
+  "class_name": "Content Delivery Network",
+  "description": "A CDN é a camada mais exposta à internet. Erros de configuração aqui podem resultar em vazamentos massivos de dados em cache ou sequestro da distribuição de conteúdo.",
+  "components": [
+    "aws_cloudfront"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Sequestro de subdomínio (Subdomain Takeover).",
+      "scenario": "Uma entrada CNAME no DNS da empresa aponta para um recurso de CDN ou origem (endpoint 'dangling') que foi desativado. Um atacante cria um recurso na sua própria conta em nuvem e reivindica (claim) esse endereço. Embora provedores modernos (como CloudFront) exijam validação de domínio para mitigar isso, configurações herdadas ou serviços sem essa validação estrita permitem que o atacante sirva conteúdo indevido se passando pela empresa.",
+      "countermeasures": [
+        "Gerenciamento rigoroso do ciclo de vida de registros DNS acoplados à infraestrutura como código (IaC).",
+        "Utilizar certificados SSL/TLS estritos atrelados ao domínio exato (via AWS Certificate Manager) associados à distribuição."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção de conteúdo malicioso no servidor de origem e distribuição global.",
+      "scenario": "Um atacante consegue acesso público de escrita ao Bucket S3 de origem (onde ficam as imagens e o JavaScript do frontend) e altera o código do site para capturar dados de cartão de crédito. A CDN faz o cache desse arquivo malicioso e o entrega para milhares de usuários instantaneamente.",
+      "countermeasures": [
+        "Bloquear completamente o acesso público direto ao Bucket S3/Origem.",
+        "Configurar o Origin Access Control (OAC) para que a origem aceite requisições exclusivamente da distribuição CloudFront específica."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Acesso abusivo a arquivos armazenados em cache sem registro do evento.",
+      "scenario": "Documentos sigilosos em PDF foram temporariamente colocados na CDN. Um atacante faz o download massivo deles. Como a resposta saiu direto da \"borda\" (Cache Hit), o servidor de aplicação não registrou o acesso e os logs da CDN estavam desativados.",
+      "countermeasures": [
+        "Habilitar os Standard Access Logs na CDN e roteá-los para um bucket seguro e monitorado pelo SIEM.",
+        "Configurar alertas para picos anômalos de tráfego de saída (Data Transfer Out)."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Cacheamento acidental de respostas dinâmicas e dados pessoais (PII).",
+      "scenario": "Por uma má configuração nas chaves de cache (Cache Key Policy), a CDN é instruída a ignorar cabeçalhos de 'Authorization' ou cookies de sessão. Quando o 'Usuário A' solicita o seu extrato financeiro, a CDN armazena a resposta dinâmica. Logo em seguida, quando o 'Usuário B' acessa a mesma rota, a CDN entrega o arquivo em cache do 'Usuário A', causando um vazamento grave de PII.",
+      "countermeasures": [
+        "Configurar Cache Behaviors restritivos, garantindo que rotas com Authorization no cabeçalho ou que gerem conteúdo dinâmico não sejam cacheadas (Cache-Control: no-store).",
+        "Usar Signed URLs (URLs Assinadas) ou Signed Cookies para restringir acesso a conteúdos privados na borda."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Esgotamento financeiro ou Cache Busting.",
+      "scenario": "Um atacante gera milhões de requisições adicionando parâmetros aleatórios na URL (ex: imagem.jpg?v=123, imagem.jpg?v=456). Isso força um Cache Miss constante na CDN, repassando a carga brutal para o servidor de origem, derrubando o backend e gerando uma conta de cloud astronômica.",
+      "countermeasures": [
+        "Configurar a Cache Key Policy da CDN para ignorar query strings não essenciais.",
+        "Acoplar a CDN aos serviços avançados de mitigação de DDoS e WAF do provedor de nuvem."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Execução de scripts na borda (Edge Computing) com privilégios não intencionais.",
+      "scenario": "A equipe implementa uma função (ex: Lambda@Edge) para reescrever cabeçalhos HTTP. Essa função tem permissões excessivas no IAM. Um atacante manipula o cabeçalho de entrada para explorar uma vulnerabilidade no script, forçando a função a assumir privilégios maiores e ler segredos do ambiente.",
+      "countermeasures": [
+        "Aplicar o Princípio do Menor Privilégio na Execution Role dos scripts de borda.",
+        "Realizar análise de código fonte (SAST) em todas as funções de Edge Computing, validando e sanitizando qualquer input do usuário."
+      ]
+    }
+  ]
+}

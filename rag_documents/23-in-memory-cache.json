@@ -1,0 +1,64 @@
+{
+  "class_id": "23",
+  "class_name": "In Memory Cache",
+  "description": "Os sistemas de cache em memória (como Redis ou Memcached via ElastiCache) são projetados primariamente para velocidade extrema (latência submilisegundo). Historicamente, tecnologias de cache confiavam que a rede interna era segura e frequentemente não vinham com autenticação ou criptografia ativadas por padrão. Por guardarem dados sensíveis em texto plano (sessões de usuários, tokens, respostas de banco), são alvos críticos para movimentação lateral.",
+  "components": [
+    "aws_elasticache"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Acesso direto ao cache de forma não autenticada.",
+      "scenario": "O cluster do ElastiCache foi provisionado sem exigência de senha. Um atacante consegue acesso inicial a uma máquina de teste na mesma sub-rede, abre uma conexão telnet na porta 6379 (Redis) e começa a injetar e ler dados livremente, passando-se pela aplicação.",
+      "countermeasures": [
+        "Habilitar mandatoriamente a autenticação de usuários (como o Redis AUTH ou RBAC nativo das versões mais recentes).",
+        "Quando suportado, utilizar a autenticação IAM do provedor de nuvem para mapear conexões temporárias de aplicações sem uso de senhas estáticas."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Envenenamento de Cache (Cache Poisoning).",
+      "scenario": "O cache armazena as permissões de acesso dos usuários após o login para acelerar a validação. O atacante altera diretamente a chave do cache correspondente à sua própria sessão, mudando o valor role: user para role: admin. A aplicação confia no cache e concede privilégios administrativos.",
+      "countermeasures": [
+        "Segregar logicamente os bancos de dados do cache (ou usar clusters separados) para que serviços não relacionados não consigam sobrescrever chaves uns dos outros.",
+        "Tratar os dados recuperados do cache com o mesmo nível de desconfiança de entradas externas, validando a integridade do dado (ex: assinaturas HMAC em conteúdos em cache crítico)."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Execução de comandos destrutivos sem rastro.",
+      "scenario": "Uma pessoa mal-intencionada ou script defeituoso envia o comando FLUSHALL ao Redis, apagando todas as chaves instantaneamente. Isso causa uma \"Avalanche de Cache\" (Cache Stampede), derrubando o banco de dados relacional que não suporta a carga repentina. Não há logs de quem enviou o comando.",
+      "countermeasures": [
+        "Renomear ou desabilitar completamente comandos perigosos de administração (como FLUSHALL, FLUSHDB, KEYS) através das configurações de parâmetros do cluster gerenciado.",
+        "Utilizar logs de execução de motores de cache quando disponíveis ou monitorar anomalias severas nas métricas de comandos recebidos."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Captura de tráfego de memória em rede plana e vazamento em texto claro.",
+      "scenario": "Os dados trafegam sem criptografia entre a aplicação e o nó de cache. Um atacante executando um ataque Man-in-the-Middle (ARP Spoofing) dentro da VNet intercepta a comunicação e rouba os tokens de sessão ativos de milhares de usuários.",
+      "countermeasures": [
+        "Habilitar Criptografia em Trânsito (TLS) no momento do provisionamento do cluster, forçando as aplicações a se conectarem via protocolo seguro.",
+        "Habilitar Criptografia em Repouso para proteger o armazenamento dos backups automáticos ou paginações de memória no disco físico."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Bloqueio da thread principal do banco de cache.",
+      "scenario": "Sistemas como o Redis operam primariamente em uma única thread. Um atacante induz a aplicação a disparar um comando custoso de busca varrendo a memória inteira (como KEYS * em um cluster com milhões de chaves). O nó inteiro trava para responder a essa requisição, causando negação de serviço para todo o resto do sistema.",
+      "countermeasures": [
+        "Impor a utilização de padrões arquiteturais seguros, como o uso de cursores iterativos (comando SCAN) em vez de buscas globais.",
+        "Adequar o dimensionamento dos nós e configurar políticas claras de remoção (Eviction Policies, ex: volatile-lru) para que o cache expulse chaves antigas de forma segura ao atingir a capacidade de memória."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Abuso de scripts Lua para escapar do ambiente de execução do cache.",
+      "scenario": "A aplicação permite a execução de scripts Lua customizados no Redis (EVAL). O atacante injeta um script malicioso que busca explorar uma vulnerabilidade do motor Redis. Principalmente se a engine não estiver atualizada, isso permite escapar do processo de memória e executar comandos diretos no sistema operacional do nó subjacente (Redis Escape).",
+      "countermeasures": [
+        "Garantir que o serviço gerenciado esteja sempre no canal de atualizações automáticas para que correções do motor (engine patches) sejam aplicadas imediatamente pelo provedor.",
+        "Restringir ou bloquear a execução de scripts dinâmicos e funções avançadas não essenciais."
+      ]
+    }
+  ]
+}

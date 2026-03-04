@@ -1,0 +1,65 @@
+{
+  "class_id": "10",
+  "class_name": "DNS and Traffic Routing",
+  "description": "O DNS funciona como a \"lista telefônica\" da internet e a primeira linha de roteamento. Esta classe é responsável por traduzir nomes de domínio em endereços IP e direcionar o tráfego dos usuários para os endpoints corretos. É uma camada de extrema criticidade, pois o comprometimento aqui permite que um atacante sequestre totalmente o tráfego legítimo antes mesmo que ele alcance a sua infraestrutura de nuvem, ou cause uma indisponibilidade global da aplicação.",
+  "components": [
+    "aws_route_53",
+    "aws_route_53_hosted_zone"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "DNS Hijacking / Cache Poisoning.",
+      "scenario": "Um atacante manipula o tráfego do domínio legítimo, redirecionando usuários para um endereço IP malicioso.",
+      "countermeasures": [
+        "Habilitar DNSSEC para assinar criptograficamente as zonas, garantindo a integridade e autenticidade das respostas DNS (mitigando spoofing em trânsito).",
+        "Restringir rigorosamente o acesso ao painel de controle do provedor de DNS usando RBAC granular e MFA para evitar a alteração maliciosa da origem."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Modificação não autorizada de Zonas Hospedadas (Hosted Zones).",
+      "scenario": "Um script com credenciais vazadas ou permissões excessivas altera o registro A do domínio principal da aplicação, redirecionando os usuários e interrompendo o serviço.",
+      "countermeasures": [
+        "Gerenciar todos os registros DNS exclusivamente via Infraestrutura como Código (IaC), bloqueando alterações manuais via console.",
+        "Implementar Resource Locks ou Service Control Policies em Zonas Hospedadas críticas para impedir exclusões ou modificações não intencionais."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Alterações de registros DNS realizadas sem rastreabilidade de autoria.",
+      "scenario": "O tráfego foi redirecionado temporariamente na madrugada, mas não existem logs detalhados para confirmar qual conta de serviço ou administrador realizou a mudança.",
+      "countermeasures": [
+        "Habilitar logs de auditoria (como o AWS CloudTrail) para registrar todas as chamadas de API executadas na gestão do DNS.",
+        "Configurar alertas em tempo real no SIEM para qualquer evento de alteração em Resource Record Sets de subdomínios críticos."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Enumeração de infraestrutura via DNS público e Transparência de Certificados.",
+      "scenario": "Como a transferência de zona completa (AXFR) é bloqueada em nuvens públicas, o atacante utiliza força bruta em dicionários de DNS ou consulta logs de Certificate Transparency para descobrir subdomínios internos e mapear ambientes de desenvolvimento (dev.api.empresa.com).",
+      "countermeasures": [
+        "Utilizar Zonas Privadas (Private Hosted Zones) nativas da nuvem para resolução de nomes de infraestrutura interna, impedindo a consulta via internet.",
+        "Evitar o uso de nomenclaturas óbvias para recursos que não devem ser expostos."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Amplificação de DNS ou inundações de consultas (DNS Flood).",
+      "scenario": "Uma rede de botnets inunda a zona hospedada com requisições DNS. Embora os provedores de nuvem utilizem redes Anycast que absorvem grandes impactos, o volume maciço pode degradar a performance de resolução e causar alta latência para os usuários reais.",
+      "countermeasures": [
+        "Utilizar serviços de proteção DDoS nativos e avançados do provedor integrados diretamente ao plano de controle do DNS.",
+        "Configurar políticas de roteamento baseadas em Health Checks para desviar o tráfego de rotas sob ataque ou instáveis."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Delegação e controle de subdomínios órfãos (Subdomain Takeover).",
+      "scenario": "Um registro CNAME aponta para um recurso externo ou bucket S3 que já foi deletado. O atacante recria o recurso usando o mesmo nome e ganha controle legítimo sobre o subdomínio.",
+      "countermeasures": [
+        "Integrar a exclusão de registros DNS no pipeline automatizado de descomissionamento (destruição de recursos).",
+        "Implementar varreduras contínuas no ambiente de nuvem para alertar e remover registros de DNS que apontem para destinos não resolvidos (Dangling DNS)."
+      ]
+    }
+  ]
+}

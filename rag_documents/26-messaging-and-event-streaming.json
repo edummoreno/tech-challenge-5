@@ -1,0 +1,68 @@
+{
+  "class_id": "26",
+  "class_name": "Messaging and Event Streaming",
+  "description": "Os serviços de mensageria e streaming de eventos são o \"sistema nervoso\" das arquiteturas distribuídas e de microsserviços, garantindo desacoplamento e processamento assíncrono. A segurança foca em garantir que apenas publicadores autorizados possam enviar eventos e que apenas consumidores legítimos possam ler/drenar as mensagens, além de proteger dados em trânsito e evitar a injeção de mensagens forjadas que desestabilizem outros sistemas.",
+  "components": [
+    "aws_simple_notification_service",
+    "aws_simple_notification_service_topic",
+    "aws_simple_queue_service",
+    "aws_simple_queue_service_queue",
+    "azure_event_hubs",
+    "gcp_pubsub"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Publicação forjada de mensagens (Message Spoofing).",
+      "scenario": "O tópico SNS ou a fila SQS não possui uma política de restrição de publicadores. O atacante descobre a URL da fila e envia um evento falso de \"Pagamento Aprovado\". O microsserviço de expedição, confiando que tudo na fila é legítimo, lê a mensagem e envia o produto físico sem que o pagamento real tenha ocorrido.",
+      "countermeasures": [
+        "Configurar as Políticas de Recurso (Resource Policies / IAM) do tópico/fila para permitir a ação Publish/SendMessage estritamente para as Roles dos microsserviços originadores esperados.",
+        "Assinar mensagens criptograficamente na origem e validar a assinatura no destino (consumidor) em transações financeiras críticas."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção de payloads maliciosos no corpo da mensagem.",
+      "scenario": "O publicador tem uma falha e aceita entradas não tratadas do usuário, colocando-as dentro da mensagem enviada para o Pub/Sub. O consumidor da mensagem, que é um sistema interno vulnerável a injeção de comandos, processa essa mensagem e acaba executando o payload do atacante em uma rede que se achava \"segura\".",
+      "countermeasures": [
+        "Tratar o sistema de mensageria como um limite de confiança não absoluto: consumidores devem realizar validação de esquema (Schema Validation e sanitização) do payload recebido antes de processá-lo.",
+        "Isolar filas de tráfego interno (seguro) de filas que processam eventos gerados por ações diretas de usuários externos."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Processamento de eventos críticos sem correlação de origem.",
+      "scenario": "Ocorre uma falha sistêmica ou transação contestada. Como a arquitetura é orientada a eventos, a mensagem passou por três tópicos e duas filas diferentes. Sem IDs de rastreabilidade na mensagem, é impossível auditar de onde a transação se originou e qual usuário a disparou.",
+      "countermeasures": [
+        "Injetar metadados de auditoria e Correlation IDs distribuídos nos atributos ou cabeçalhos (Message Attributes) de todas as mensagens assim que entram na malha de eventos.",
+        "Habilitar os logs nativos de eventos dos provedores (ex: logs de entrega do SNS ou Azure Event Hubs Capture) para auditoria de tráfego."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Vazamento de Dados Pessoais (PII) em repouso nas filas ou tópicos.",
+      "scenario": "Mensagens contendo dados de cartão de crédito ou senhas temporárias aguardam processamento em uma fila SQS. Um desenvolvedor com permissões genéricas inspeciona a fila em busca de bugs (usando a função poll no console) e lê os dados sensíveis dos clientes em texto plano.",
+      "countermeasures": [
+        "Habilitar a Criptografia do Lado do Servidor (SSE) utilizando chaves gerenciadas pelo cliente (KMS) nativamente na fila/tópico.",
+        "Para dados extremamente sensíveis, aplicar Criptografia em Nível de Campo (Field-Level Encryption) antes de enviar a mensagem, para que nem mesmo administradores de nuvem com acesso à fila consigam ler o dado real."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Inundação de fila (Queue Flooding) ou Envenenamento (Poison Pill).",
+      "scenario": "O atacante submete uma mensagem formatada incorretamente (Poison Pill). O consumidor tenta processar, falha, não consegue deletar a mensagem, e ela retorna para a fila, repetindo esse ciclo infinitamente. Isso exaure a CPU do worker e bloqueia o processamento de todas as mensagens legítimas atrás dela.",
+      "countermeasures": [
+        "Configurar obrigatoriamente Filas de Mensagens Mortas (Dead-Letter Queues - DLQ) atreladas a contadores de novas tentativas (Max Receive Count). Mensagens que falham em ser processadas seguidamente devem ser movidas para a DLQ para não travarem a fila principal.",
+        "Configurar limites de tamanho da mensagem e rate limiting nas APIs que geram os eventos."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Exploração de políticas permissivas para gerenciar inscrições (Subscriptions).",
+      "scenario": "Uma aplicação possui a permissão ampla sns:*. Um atacante compromete a aplicação e, usando essa credencial, cria uma nova Inscrição (Subscription) no Tópico SNS produtivo, redirecionando uma cópia secreta de todas as notificações e dados corporativos sensíveis para o seu próprio endpoint web externo ou e-mail pessoal.",
+      "countermeasures": [
+        "Separar drasticamente permissões de administração das de operação. O aplicativo deve possuir apenas sns:Publish ou sqs:SendMessage / sqs:ReceiveMessage. A criação e configuração das inscrições deve ser restrita exclusivamente aos pipelines de IaC (Terraform/CloudFormation)."
+      ]
+    }
+  ]
+}

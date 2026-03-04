@@ -1,0 +1,66 @@
+{
+  "class_id": "31",
+  "class_name": "Monitoring and Telemetry",
+  "description": "Ferramentas de monitoramento e telemetria coletam métricas, logs de aplicação e dados de performance em tempo real. Elas são o \"painel de instrumentos\" da equipe de operações e do SOC (Security Operations Center). A segurança aqui foca em impedir que atacantes insiram dados falsos (cegando os alertas) ou que desenvolvedores utilizem esses repositórios inadvertidamente como \"lixeiras\" de dados sensíveis e credenciais (exposição de PII).",
+  "components": [
+    "aws_cloudwatch",
+    "azure_application_insights",
+    "azure_monitor"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de métricas e injeção de logs falsos via credenciais comprometidas.",
+      "scenario": "Utilizando credenciais roubadas de uma instância comprometida ou explorando uma IAM Role com permissões excessivas, um atacante inunda o CloudWatch com métricas falsas de \"Tudo OK\" enquanto executa um ataque de exfiltração pesada de dados, impedindo que os alarmes baseados em anomalia de rede disparem.",
+      "countermeasures": [
+        "Autenticar rigorosamente todos os agentes de telemetria usando identidades gerenciadas da máquina host e aplicar o princípio do menor privilégio na Role.",
+        "Configurar os agentes para enviar dados unicamente através de redes privadas (VPC Endpoints), bloqueando a ingestão de métricas não assinadas vindas da internet pública."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Modificação maliciosa de alarmes e limites de detecção.",
+      "scenario": "Um usuário com acesso excessivo edita o limite de um alarme crítico (ex: de 5 falhas de login para 50.000 falhas). O SOC deixa de ser notificado, e o atacante consegue realizar ataques de força bruta prolongados sem interrupção.",
+      "countermeasures": [
+        "Gerenciar a criação e os limiares de alarmes estritamente via Infraestrutura como Código (IaC), bloqueando alterações manuais no console.",
+        "Implementar RBAC rigoroso, permitindo apenas a equipes de engenharia de confiabilidade (SRE) e segurança a modificação de painéis operacionais críticos."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Exclusão de logs operacionais vitais para incidentes.",
+      "scenario": "Após comprometer um microsserviço, o atacante acessa a API do serviço de telemetria e deleta o Log Group correspondente (ex: DeleteLogGroup). Os rastros da vulnerabilidade explorada são destruídos, dificultando a análise pós-incidente.",
+      "countermeasures": [
+        "Atribuir políticas de retenção imutável aos grupos de log principais.",
+        "Aplicar o princípio de Deny explícito para ações de exclusão de logs (DeleteLogStream, DeleteLogGroup) em todas as Roles operacionais."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Vazamento de PII e Segredos no conteúdo dos logs de aplicação.",
+      "scenario": "O código da aplicação imprime (dump) todo o payload das requisições HTTP em caso de erro. Senhas em texto claro, CPFs e tokens de sessão vão parar nos logs do Application Insights, tornando acessível a qualquer pessoa com permissão de leitura no painel.",
+      "countermeasures": [
+        "Implementar bibliotecas de Data Masking (mascaramento) e Redaction diretamente no código-fonte antes de emitir o log para a nuvem.",
+        "Utilizar ferramentas nativas de proteção de dados no provedor (como o CloudWatch Data Protection) para detectar e ofuscar dados sensíveis automaticamente em tempo de ingestão."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão de cotas de ingestão (Negação de Carteira - EEDoS).",
+      "scenario": "Um atacante força um erro contínuo na aplicação. A aplicação começa a gerar gigabytes de logs de exceção por minuto. Isso atinge o limite diário de ingestão (Cap) do workspace de logs, cegando todo o resto da infraestrutura para novos eventos reais e gerando custos astronômicos.",
+      "countermeasures": [
+        "Configurar filtros de severidade nos agentes locais (enviando apenas WARN ou ERROR em produção) para reduzir o volume de ingestão.",
+        "Estabelecer alarmes de faturamento dinâmicos baseados no consumo incomum de ingestão de logs e métricas."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Acesso cruzado a logs e métricas de ambientes superiores (Prod).",
+      "scenario": "A telemetria de Desenvolvimento, Homologação e Produção é enviada para um único Log Workspace sem isolamento. Um estagiário com acesso ao ambiente de Dev consegue ler variáveis de ambiente e erros do ambiente de Produção, utilizando essa inteligência para escalar seus privilégios no sistema real.",
+      "countermeasures": [
+        "Segregar fisicamente os repositórios de log e Workspaces de telemetria por ambiente de implantação.",
+        "Utilizar controles de acesso granulares (RBAC por recurso ou Resource-level permissions) caso seja exigido um repositório centralizado."
+      ]
+    }
+  ]
+}

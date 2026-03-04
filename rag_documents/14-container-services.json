@@ -1,0 +1,64 @@
+ {
+  "class_id": "14",
+  "class_name": "Container Services",
+  "description": "Plataformas de execução de contêineres gerenciadas abstratam a camada de máquina virtual para focar apenas na execução da imagem do contêiner. A segurança aqui orbita a cadeia de suprimentos de software (garantir que a imagem é segura), o isolamento dos processos do contêiner em relação ao host subjacente e a gestão adequada de segredos em tempo de execução.",
+  "components": [
+    "aws_elastic_container_service",
+    "aws_elastic_container_service_container_2",
+    "aws_elastic_container_service_service",
+    "azure_container_instances"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de imagem de contêiner (Image Spoofing).",
+      "scenario": "O serviço está configurado para baixar imagens de um repositório público usando a tag latest. O atacante sequestra a conta do mantenedor e sobe uma imagem maliciosa com a mesma tag, fazendo com que o serviço passe a rodar um contêiner comprometido na próxima reinicialização.",
+      "countermeasures": [
+        "Recuperar imagens baseadas exclusivamente no seu hash criptográfico seguro (SHA256 digest) em vez de tags mutáveis.",
+        "Armazenar as imagens em repositórios privados da organização (como ACR ou ECR) e implementar assinatura de imagem (Content Trust) para garantir a autenticidade antes da execução."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Fuga de contêiner (Container Breakout/Escape).",
+      "scenario": "Uma vulnerabilidade na aplicação permite que um atacante obtenha execução remota de código (RCE) dentro do contêiner e utilize bibliotecas locais para montar o sistema de arquivos do host subjacente, adulterando os processos ou comprometendo outros contêineres vizinhos.",
+      "countermeasures": [
+        "Configurar o sistema de arquivos raiz do contêiner como somente leitura (readOnlyRootFilesystem: true).",
+        "Remover todas as capacidades (Capabilities) do kernel Linux que não sejam estritamente necessárias para a aplicação (ex: descartar CAP_SYS_ADMIN)."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Destruição de logs locais devido à volatilidade inerente aos contêineres.",
+      "scenario": "Um contêiner sofre uma invasão, executa ações maliciosas e, em seguida, é destruído (por falha ou escalonamento). Como os logs estavam salvos apenas no sistema de arquivos efêmero do contêiner, todas as evidências forenses desaparecem.",
+      "countermeasures": [
+        "Configurar os drivers de log do serviço de contêiner (como awslogs) para transmitir a saída padrão (stdout/stderr) imediatamente e de forma assíncrona para repositórios centrais imutáveis."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição de credenciais através de variáveis de ambiente.",
+      "scenario": "As senhas do banco de dados são injetadas nas configurações da tarefa (Task Definition) através de variáveis de ambiente em texto plano. Qualquer desenvolvedor com acesso de visualização ao painel do orquestrador ou a um console de depuração consegue ler as chaves.",
+      "countermeasures": [
+        "Substituir variáveis de ambiente em texto plano por referências seguras integradas diretamente a gerenciadores de segredos nativos da nuvem na inicialização do serviço."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão de recursos do nó computacional (Noisy Neighbor).",
+      "scenario": "Um contêiner contendo um vazamento de memória (memory leak) ou sendo alvo de processamento pesado consome toda a memória RAM e CPU do nó subjacente, causando a interrupção abrupta de outros serviços legítimos que dividem o mesmo espaço de infraestrutura.",
+      "countermeasures": [
+        "Estabelecer obrigatoriamente limites máximos (Limits) e garantias mínimas (Requests) de uso de CPU e Memória nas definições de tarefa de cada contêiner."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Execução de processos internos do contêiner como superusuário (Root).",
+      "scenario": "A imagem Docker foi construída sem especificar um usuário, rodando como root por padrão. Se a aplicação for invadida, o cibercriminoso ganha privilégios de superusuário dentro do contêiner, facilitando enormemente a exploração de falhas do kernel para obter a elevação de privilégios em nível de máquina.",
+      "countermeasures": [
+        "Definir explicitamente um usuário de baixo privilégio na instrução USER do Dockerfile.",
+        "Configurar as políticas da plataforma para negar a escalada de privilégios interna (allowPrivilegeEscalation: false) e proibir o provisionamento de contêineres do tipo privilegiado (Privileged Mode)."
+      ]
+    }
+  ]
+}

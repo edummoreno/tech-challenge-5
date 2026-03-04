@@ -1,0 +1,61 @@
+{
+  "class_id": "07",
+  "class_name": "Application Security Controls",
+  "description": "O WAF (Web Application Firewall) atua na Camada 7 (Aplicação) inspecionando o tráfego HTTP/HTTPS em busca de padrões de ataques web (OWASP Top 10, bots, injeções) antes que alcancem o API Gateway, Load Balancer ou CDN.",
+  "components": [
+    "aws_waf"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Evasão das regras do WAF falsificando a origem da requisição.",
+      "scenario": "Um atacante altera o cabeçalho User-Agent para se passar por um crawler legítimo (como o Googlebot) ou forja o cabeçalho X-Forwarded-For para simular que o tráfego vem de um IP interno confiável, tentando contornar as regras de bloqueio do WAF.",
+      "countermeasures": [
+        "Validar a autenticidade de bots conhecidos via DNS reverso (Reverse DNS lookup).",
+        "Configurar o WAF para confiar apenas no IP verdadeiro do cliente extraído diretamente da conexão de rede na borda, ignorando cabeçalhos facilmente manipuláveis caso não venham de uma CDN confiável."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Ofuscação de payloads para burlar assinaturas de segurança.",
+      "scenario": "O atacante codifica o payload malicioso (ex: Base64, Double URL Encoding) para que o WAF não reconheça a ameaça e deixe a requisição passar. Como a equipe confia excessivamente no WAF (False Sense of Security) e não valida as entradas no backend, o servidor decodifica e executa o ataque.",
+      "countermeasures": [
+        "Configurar regras de normalização de texto no WAF antes da inspeção.",
+        "O WAF não substitui a segurança da aplicação: manter a validação e sanitização rigorosa de entradas diretamente no código do backend (Defense in Depth)."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Incapacidade de analisar falsos positivos ou investigar ataques bloqueados.",
+      "scenario": "O WAF está bloqueando o tráfego legítimo de um parceiro de negócio, mas como os logs completos de requisição estão desativados (para economizar custos), a equipe de segurança não consegue ver qual regra exata foi acionada nem o payload que causou o bloqueio.",
+      "countermeasures": [
+        "Habilitar logs detalhados do WAF (enviando para um bucket S3 ou Log Analytics), amostrando apenas parte do tráfego benigno se o custo for um problema, mas registrando 100% das requisições bloqueadas."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição da presença do WAF ou detalhes de regras através de páginas de bloqueio.",
+      "scenario": "Quando uma requisição é bloqueada, o WAF pode retornar cabeçalhos específicos do provedor ou páginas de erro padrão (especialmente quando páginas customizadas não são configuradas). Isso avisa ao atacante qual tecnologia está em uso, permitindo focar em bypasses conhecidos.",
+      "countermeasures": [
+        "Customizar as respostas de bloqueio do WAF para retornar páginas de erro genéricas que não revelem a infraestrutura de proteção subjacente e suprimir cabeçalhos identificadores."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão de recursos do próprio WAF ou bloqueio de usuários legítimos durante picos.",
+      "scenario": "A equipe cria regras de Expressão Regular (Regex) extremamente complexas e ineficientes. Durante um pico de tráfego, o tempo de processamento do WAF aumenta muito, causando latência severa, ou regras de Rate Limiting mal calibradas começam a bloquear clientes reais (Falso Positivo).",
+      "countermeasures": [
+        "Utilizar grupos de regras gerenciadas (Managed Rule Groups) previamente testadas pelo provedor.",
+        "Implementar Rate Limiting de forma gradual, começando no modo de \"Contagem/Log\" antes de ativar o modo \"Bloqueio\"."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Exploração de exceções mal configuradas nas regras do WAF.",
+      "scenario": "Para facilitar o acesso interno, um administrador cria uma regra no WAF que pula (Bypass) todas as inspeções de segurança se a rota começar com /admin/. Um atacante descobre isso e usa a rota para enviar ataques de injeção diretamente ao backend sem ser filtrado.",
+      "countermeasures": [
+        "Aplicar o conceito de Zero Trust: nenhuma rota deve ser isenta de inspeção. Áreas administrativas devem exigir inspeção estrita e estar limitadas a IPs conhecidos (VPN/Bastion) ou mTLS, e não apenas ignorar o WAF."
+      ]
+    }
+  ]
+}

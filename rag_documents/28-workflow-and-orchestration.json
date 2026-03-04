@@ -1,0 +1,64 @@
+{
+  "class_id": "28",
+  "class_name": "Workflow and Orchestration",
+  "description": "Ferramentas de orquestração e fluxo de trabalho (como Logic Apps ou Step Functions) automatizam processos de negócios conectando centenas de APIs e serviços distintos. O grande desafio de segurança aqui é que esses fluxos agem como \"superusuários\" delegados: eles guardam credenciais (Conexões de API) de dezenas de sistemas simultaneamente. Se um fluxo for comprometido, o atacante ganha acesso a todos os sistemas aos quais a orquestração está conectada.",
+  "components": [
+    "azure_logic_apps",
+    "logic_apps"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Acionamento malicioso de fluxos de trabalho via gatilhos (Triggers) desprotegidos.",
+      "scenario": "Um fluxo é configurado para iniciar a partir de uma requisição HTTP (Webhook) e não possui validação de origem. Um atacante descobre a URL pública do gatilho e envia requisições forjadas, passando-se por um sistema interno e forçando o Logic App a processar transações fraudulentas.",
+      "countermeasures": [
+        "Proteger todos os gatilhos HTTP com autenticação rigorosa (ex: Azure AD / Microsoft Entra ID ou chaves de assinatura SAS atreladas a IPs específicos).",
+        "Exigir que sistemas clientes apresentem tokens JWT válidos e assinem os payloads para garantir a identidade do emissor."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Alteração da definição do fluxo ou injeção de parâmetros maliciosos.",
+      "scenario": "Um usuário com permissão de edição no portal altera a lógica de um fluxo de aprovação financeira, inserindo um desvio (branch) que envia uma cópia dos dados para um e-mail externo antes de concluir a transação.",
+      "countermeasures": [
+        "Bloquear a edição manual de fluxos diretamente no portal de produção; gerenciar as definições de fluxo (JSON) exclusivamente através de pipelines de CI/CD com revisão de código obrigatória.",
+        "Sanitizar todas as entradas dinâmicas provenientes de gatilhos externos antes de repassá-las para os conectores de banco de dados ou APIs na etapa seguinte."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Execução de ações críticas por conectores sem rastreabilidade de autoria do usuário final.",
+      "scenario": "O Logic App atualiza registros no banco de dados usando uma credencial fixa do conector. Quando ocorre uma fraude, os logs do banco mostram apenas que \"o Logic App fez a alteração\", mas não registram qual usuário humano original iniciou o fluxo.",
+      "countermeasures": [
+        "Repassar o contexto de identidade (Identity Passthrough) do usuário originador através dos cabeçalhos HTTP do fluxo até o sistema de destino.",
+        "Centralizar os logs de execução (Run History) em um Log Analytics Workspace, correlacionando o ID de execução do fluxo com a transação no banco de dados."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição de dados sensíveis e credenciais no histórico de execução.",
+      "scenario": "O histórico de execução (Run History) do fluxo de trabalho salva as entradas e saídas de cada etapa para fins de depuração (Debug). Um desenvolvedor com acesso de leitura ao Logic App consegue ver senhas, chaves de API ou dados PII de clientes trafegando em texto claro no portal.",
+      "countermeasures": [
+        "Habilitar a ofuscação de dados (Secure Inputs / Secure Outputs) nas configurações das etapas críticas do fluxo, mascarando os valores no histórico de execução.",
+        "Armazenar credenciais de conectores sempre no Key Vault, referenciando-as dinamicamente, em vez de salvá-las nas configurações do fluxo."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Sobrecarga de sistemas dependentes (Downstream DoS).",
+      "scenario": "O fluxo de trabalho possui um gatilho de polling (verificação contínua) mal configurado ou um loop infinito (como um \"Until\" mal implementado). Ele começa a fazer milhares de chamadas por minuto contra uma API interna legada, esgotando os recursos da API e causando uma negação de serviço interna.",
+      "countermeasures": [
+        "Configurar limites de concorrência (Concurrency Control) nos gatilhos para controlar quantos fluxos podem rodar simultaneamente.",
+        "Implementar políticas de Circuit Breaker e Rate Limiting nos conectores para proteger os sistemas de destino contra sobrecarga."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Abuso de Identidades Gerenciadas superexpostas.",
+      "scenario": "O Logic App possui uma Identidade Gerenciada com a permissão de Contributor na assinatura inteira da nuvem. Um atacante que consiga injetar um comando em uma etapa do fluxo passa a utilizar as permissões do próprio Logic App para criar ou deletar máquinas virtuais na infraestrutura.",
+      "countermeasures": [
+        "Aplicar o Princípio do Menor Privilégio na Identidade Gerenciada do recurso, concedendo acesso estrito apenas aos serviços (ex: um bucket específico ou uma tabela exata) que o fluxo realmente precisa acessar."
+      ]
+    }
+  ]
+}

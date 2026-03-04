@@ -1,0 +1,63 @@
+{
+  "class_id": "27",
+  "class_name": "Email Services",
+  "description": "Serviços gerenciados de e-mail (como o Amazon SES) são cruciais para a comunicação transacional (resets de senha, recibos) ou campanhas. O comprometimento dessa classe geralmente não resulta na invasão do banco de dados da empresa, mas sim na destruição imediata da reputação do seu domínio, além de municiar atacantes com a sua infraestrutura confiável para disparar ataques de Phishing com taxas altíssimas de sucesso contra seus clientes e parceiros.",
+  "components": [
+    "aws_simple_email_service"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Envio de e-mails fraudulentos passando-se pela organização (Phishing interno ou externo).",
+      "scenario": "O serviço é configurado sem as chaves de proteção adequadas. O atacante utiliza a credencial do serviço para enviar e-mails aos clientes dizendo: \"Sua conta será suspensa, clique aqui\". Como o e-mail realmente sai dos servidores legítimos da empresa, ele não cai nas caixas de spam.",
+      "countermeasures": [
+        "Configurar corretamente e validar as identidades de domínio utilizando os padrões da indústria: SPF (Sender Policy Framework), DKIM (DomainKeys Identified Mail) e DMARC com política de rejeição.",
+        "Restringir o serviço a enviar e-mails apenas de endereços aprovados (ex: no-reply@empresa.com), negando envios de remetentes arbitrários."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção de Cabeçalhos de E-mail (Email Header Injection).",
+      "scenario": "Um formulário de \"Fale Conosco\" na web pede o e-mail do usuário e o repassa para a API do SES sem sanitização. O atacante injeta retornos de carro (\\r\\n) seguidos de cabeçalhos ocultos como Bcc: vitima@empresa.com. Isso transforma a aplicação corporativa em um disparador anônimo de spam.",
+      "countermeasures": [
+        "Implementar sanitização severa das entradas de usuários antes de injetá-las em funções de composição de e-mail.",
+        "Utilizar APIs nativas estruturadas do provedor de e-mail (que já lidam com cabeçalhos separadamente do corpo) em vez de montar as strings de mensagens RAW manualmente no código."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Envios maliciosos não rastreáveis à origem interna.",
+      "scenario": "A reputação do domínio cai subitamente e o provedor bloqueia a conta devido a denúncias de spam. A empresa olha os logs, mas descobre que dezenas de instâncias e funções compartilham a mesma credencial SMTP ou API para enviar e-mail. Não se sabe qual servidor foi comprometido e gerou o problema.",
+      "countermeasures": [
+        "Criar credenciais de envio (SMTP/API Keys) únicas e rastreáveis para cada microsserviço ou ambiente.",
+        "Habilitar recursos de Rastreamento de Eventos (Event Publishing no SES) direcionando logs de envio, entregas, rejeições (Bounces) e reclamações para um Log Analytics atrelado à identidade do disparador."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição de dados sensíveis na camada de transporte ou em caixas não monitoradas.",
+      "scenario": "E-mails contendo faturas financeiras detalhadas são enviados. Se a criptografia não for aplicada, atacantes na rota da internet conseguem espionar o tráfego e ler os conteúdos. Alternativamente, e-mails sensíveis devolvidos (Bounces) caem em caixas genéricas ou buckets de logs abertos.",
+      "countermeasures": [
+        "Configurar o serviço de e-mail para exigir Transporte Seguro (TLS Oportunista) na entrega final aos servidores de destino, utilizando TLS sempre que suportado pelo recebedor.",
+        "Garantir que as Dead-Letter Queues ou Buckets S3 que recebem logs de devolução e conteúdos completos de mensagens possuam criptografia KMS ativada e políticas restritas de acesso."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão das cotas de envio impedindo a operação normal do negócio.",
+      "scenario": "Um atacante gera requisições falsas automatizadas de \"Esqueci minha senha\" aos milhares no portal. Isso consome o limite diário de envio (Sending Quota) da conta no SES. Quando o limite é estourado, o serviço para de funcionar e clientes reais não conseguem mais receber recibos, e-mails de confirmação ou recuperar suas senhas.",
+      "countermeasures": [
+        "Implementar proteção WAF e Rate Limiting/CAPTCHA em todos os pontos de entrada públicos da aplicação que engatilham o envio de e-mails.",
+        "Monitorar ativamente as métricas de reputação e configurar alarmes quando a utilização da cota diária ultrapassar limites incomuns (ex: picos repentinos que atinjam 80% do limite rapidamente)."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Exploração de políticas para dominar a configuração do domínio e sequestrá-lo.",
+      "scenario": "Um aplicativo de terceiros (SaaS) pede permissões para enviar e-mails em nome da empresa via SES. A política IAM concedida tem permissões amplas em vez de apenas envio. Se o SaaS for invadido, os cibercriminosos alteram os webhooks de recebimento ou deletam as identidades validadas da empresa, assumindo o controle operacional das notificações.",
+      "countermeasures": [
+        "Restringir rigidamente o acesso: aplicações apenas precisam da permissão para enviar e-mails (ses:SendEmail, ses:SendRawEmail). Jamais conceder a microsserviços ou parceiros externos permissões de administração (como ses:VerifyDomainIdentity ou alterações de políticas)."
+      ]
+    }
+  ]
+}

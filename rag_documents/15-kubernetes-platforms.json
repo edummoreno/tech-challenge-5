@@ -1,0 +1,62 @@
+ {
+  "class_id": "15",
+  "class_name": "Kubernetes Platforms",
+  "description": "Kubernetes (K8s) é a espinha dorsal moderna para orquestração avançada. É um sistema de altíssima complexidade, contendo um plano de controle (Control Plane) e nós de execução (Worker Nodes). A segurança em clusters K8s exige proteção profunda em múltiplas frentes: isolamento de rede entre pods, políticas rigorosas de admissão, proteção da API central e gestão refinada de RBAC, já que falhas aqui podem levar ao comprometimento integral de todo o ambiente de microsserviços.",
+  "components": [
+    "aws_elastic_kubernetes_service",
+    "azure_kubernetes_services",
+    "gcp_kubernetes_engine"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Comprometimento de Tokens de Contas de Serviço (Service Account Tokens).",
+      "scenario": "Por padrão, o K8s monta automaticamente os tokens da conta de serviço no sistema de arquivos de cada Pod. Um atacante que compromete um Pod lê esse token e o utiliza para se autenticar contra a API do Kubernetes (Kube-apiserver), passando-se pelo Pod legítimo.",
+      "countermeasures": [
+        "Desabilitar a montagem automática de tokens em Pods que não necessitam se comunicar com a API do Kubernetes (automountServiceAccountToken: false).",
+        "Integrar a autenticação do cluster aos provedores de identidade corporativos (OIDC/Azure AD) e proibir acesso anônimo à API Server."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Adulteração do estado do cluster ou de configurações dinâmicas (ConfigMaps).",
+      "scenario": "Um atacante altera um ConfigMap ou um manifesto de Deployment em tempo de execução para modificar o comportamento de uma aplicação de produção ou para inserir um container sidecar malicioso que rouba tráfego e dados.",
+      "countermeasures": [
+        "Implementar metodologias de GitOps (como ArgoCD ou Flux), onde o estado do cluster é continuamente reconciliado com um repositório Git, revertendo automaticamente alterações manuais não autorizadas.",
+        "Utilizar Controladores de Admissão (Admission Controllers, como OPA Gatekeeper ou Kyverno) para criar políticas que bloqueiem manifestos não conformes com as diretrizes de segurança da empresa antes de serem instanciados."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Execução de comandos interativos ocultos sem registro de auditoria.",
+      "scenario": "Um administrador ou invasor utiliza o comando kubectl exec para abrir um terminal iterativo dentro de um Pod sensível. Ele realiza modificações e extrai dados, mas o cluster não guarda o histórico dos comandos inseridos naquela sessão.",
+      "countermeasures": [
+        "Habilitar e configurar adequadamente os logs de auditoria (Audit Logs) da API do Kubernetes, definindo regras para registrar metadados e os conteúdos dos pacotes de chamadas de API críticas, enviando-os a um SIEM de forma imutável."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição dos dados armazenados no banco de controle (etcd).",
+      "scenario": "Um cibercriminoso consegue acesso direto ao servidor onde o banco de dados etcd (que guarda o estado inteiro do K8s) está sendo executado, ou a um backup desprotegido do disco. Como os Secrets do K8s são apenas codificados em base64 nativamente, o invasor obtém todas as senhas da arquitetura de uma vez.",
+      "countermeasures": [
+        "Ativar a criptografia de envelope (Envelope Encryption) diretamente na configuração da API do K8s, utilizando uma chave mestra (CMK/KMS) gerenciada pelo provedor de nuvem para criptografar os dados em repouso no etcd."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Movimentação irrestrita provocando esgotamento e cascatas de falhas de rede.",
+      "scenario": "O cluster não possui restrições internas de comunicação de rede. Um Pod de frontend que foi invadido realiza um ataque volumétrico maciço diretamente contra os Pods do banco de dados no mesmo cluster, esgotando a rede local e paralisando todos os serviços.",
+      "countermeasures": [
+        "Implementar Network Policies em nível de K8s, operando com uma filosofia Default Deny, liberando a comunicação interna (Leste-Oeste) entre os Pods e Namespaces estrita e unicamente quando essencial para a regra de negócios."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Quebra de contenção utilizando montagens privilegiadas do host.",
+      "scenario": "Um invasor implanta um Pod marcando a configuração privileged: true ou configurando um hostPath que aponta diretamente para a raiz do disco do Worker Node subjacente. Ele utiliza esse acesso para manipular processos no nível da máquina hospedeira e dominar o cluster.",
+      "countermeasures": [
+        "Forçar o uso de padrões de segurança nativos, como Pod Security Admission (PSA) no perfil Restricted ou Baseline, bloqueando liminarmente o agendamento de Pods com privilégios excessivos ou que tentem acessar as interfaces de rede e disco físicos do nó de computação."
+      ]
+    }
+  ]
+}

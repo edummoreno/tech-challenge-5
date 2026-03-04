@@ -1,0 +1,63 @@
+{
+  "class_id": "19",
+  "class_name": "Backup and Disaster Recovery",
+  "description": "Esta classe centraliza as políticas de proteção e retenção de dados em toda a infraestrutura. O sistema de backup é o último recurso de recuperação de uma empresa contra falhas catastróficas ou ataques de Ransomware. Por esse motivo, os cofres de backup (Vaults) tornaram-se alvos primários: cibercriminosos modernos tentam destruir as cópias de segurança antes de criptografar o ambiente de produção para inviabilizar a recuperação e forçar o pagamento do resgate.",
+  "components": [
+    "aws_backup"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação do serviço de backup para interceptar fluxos de dados.",
+      "scenario": "Um agente malicioso em uma instância comprometida consegue se passar pelo serviço de destino do backup, fazendo com que a rotina de dump do banco de dados envie os arquivos de segurança diretamente para um servidor externo controlado pelo atacante.",
+      "countermeasures": [
+        "Autenticar rigorosamente todos os agentes de backup usando identidades gerenciadas exclusivas.",
+        "Restringir o tráfego de backup para transitar unicamente por VPC Endpoints privados, bloqueando rotas para a internet pública."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Modificação maliciosa de políticas de retenção ou alteração de Vaults.",
+      "scenario": "Um invasor com acesso ao painel de gerenciamento altera a política de retenção do backup diário de \"30 dias\" para \"1 dia\". Ele aguarda 24 horas para que todos os backups antigos expirem e sejam deletados automaticamente, e então inicia o ataque de criptografia na produção.",
+      "countermeasures": [
+        "Habilitar o recurso de Vault Lock (modo de conformidade WORM - Write-Once, Read-Many), que torna os backups imutáveis e impede que qualquer pessoa (até mesmo o usuário Root) os delete antes do prazo.",
+        "Exigir aprovação de múltiplas pessoas (Quorum/Multi-User Authorization) para qualquer alteração em políticas de proteção de dados."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Exclusão de pontos de recuperação (Recovery Points) sem deixar rastros.",
+      "scenario": "Um administrador insatisfeito ou credencial comprometida deleta os pontos de restauração críticos da empresa. Se os logs de auditoria do serviço de backup estiverem desativados ou armazenados na mesma conta, o atacante os apaga também, impedindo a identificação da autoria.",
+      "countermeasures": [
+        "Enviar os logs de auditoria das chamadas de API do serviço de backup (ex: DeleteRecoveryPoint) para uma conta de nuvem centralizada de Segurança/Log, isolada da conta de produção.",
+        "Implementar alertas automáticos no SIEM para qualquer tentativa de exclusão manual de cópias de segurança."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Roubo de arquivos de backup não criptografados ou com chaves excessivamente compartilhadas.",
+      "scenario": "O serviço de backup cria cópias automáticas dos discos (EBS/Snapshots) em um Vault. No entanto, os backups não estão encriptados ou usam a chave padrão da nuvem. O atacante compartilha o snapshot com a própria conta na AWS e o restaura para extrair o banco de dados.",
+      "countermeasures": [
+        "Criptografar todos os cofres de backup utilizando Chaves Gerenciadas pelo Cliente (KMS CMK) completamente distintas das chaves usadas no ambiente de produção.",
+        "Desabilitar por padrão o compartilhamento de Vaults ou cópias de segurança entre contas não validadas pela organização (Cross-Account Sharing)."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Esgotamento de espaço de armazenamento ou Negação de Carteira através de cópias massivas.",
+      "scenario": "Um script malicioso dispara chamadas contínuas de API para gerar backups sob demanda (On-Demand Backups) de terabytes de dados a cada minuto. Isso exaure rapidamente as cotas de armazenamento da conta e gera uma fatura estratosférica de billing no fim do dia.",
+      "countermeasures": [
+        "Implementar limites de taxa (Rate Limiting) ou políticas de IAM que restrinjam a quantidade de backups sob demanda que um usuário ou role pode iniciar em um período.",
+        "Configurar alarmes de faturamento dinâmicos baseados no consumo anômalo dos serviços de armazenamento de backup."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Abuso das funções de execução do serviço de backup (Backup Execution Role).",
+      "scenario": "Para que o serviço faça o backup de toda a infraestrutura, os administradores anexaram a política AdministratorAccess à Role do AWS Backup. Um atacante que descobre uma forma de invocar o serviço de backup manipula as requisições para assumir essa Role e obter controle total da conta.",
+      "countermeasures": [
+        "Aplicar o Princípio do Menor Privilégio à função de execução do backup, garantindo que ela tenha apenas as permissões restritas (ex: s3:GetObject, ec2:CreateSnapshot) nos recursos estritamente marcados (Tags) para backup."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "class_id": "16",
+  "class_name": "Serverless Compute",
+  "description": "A computação Serverless (como Functions as a Service - FaaS, ou contêineres efêmeros como Cloud Run) abstrai totalmente a infraestrutura subjacente e o sistema operacional, permitindo que as equipes foquem apenas no código e no serviço. A segurança nesta camada transfere a responsabilidade de patching do SO para o provedor, mas em contrapartida amplia drasticamente a superfície de ataque na camada da aplicação (código vulnerável), na gestão de permissões de execução (IAM) e nas integrações acionadas por eventos.",
+  "components": [
+    "aws_lambda",
+    "aws_lambda_function",
+    "azure_function_apps",
+    "gcp_cloud_functions",
+    "gcp_cloud_run",
+    "azure_app_services"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Invocação forjada de funções.",
+      "scenario": "Um endpoint de webhook público aciona uma função. Um atacante descobre essa URL e envia payloads forjados se passando pelo serviço legítimo (ex: simulando um pagamento aprovado), forçando a função a processar dados fraudulentos.",
+      "countermeasures": [
+        "Exigir autenticação robusta (IAM ou OAuth) para qualquer invocação via API.",
+        "Validar assinaturas criptográficas de webhooks (ex: HMAC) diretamente no código da função antes de iniciar o processamento."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção de código malicioso no pacote de implantação.",
+      "scenario": "Um atacante compromete a esteira de CI/CD ou a estação de trabalho de um desenvolvedor e injeta um backdoor no arquivo .zip da função antes do deploy. A função em nuvem passa a executar o código adulterado silenciosamente.",
+      "countermeasures": [
+        "Implementar assinatura de código (Code Signing) para garantir que a nuvem só execute funções cujos artefatos foram assinados digitalmente por uma entidade confiável.",
+        "Realizar varreduras de composição de software (SCA) no pipeline para impedir o deploy de bibliotecas vulneráveis."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Execução de ações críticas pela função sem rastreabilidade de origem.",
+      "scenario": "Uma função Serverless é acionada por uma fila de mensagens e altera um registro financeiro no banco de dados. Os logs da função registram o erro, mas não registram qual ID de usuário ou qual evento específico gerou aquela transação.",
+      "countermeasures": [
+        "Implementar logs estruturados injetando o contexto de execução (Request ID) e Correlation IDs distribuídos.",
+        "Enviar os logs padrão (stdout/stderr) nativamente para o serviço de observabilidade do provedor, garantindo a retenção imutável."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição de segredos e variáveis de ambiente em tempo de execução.",
+      "scenario": "Chaves de API de terceiros ou strings de conexão do banco de dados são injetadas diretamente nas variáveis de ambiente da função. Um erro no código faz um dump (impressão) de todas as variáveis no log da aplicação, vazando os segredos.",
+      "countermeasures": [
+        "Substituir segredos nas variáveis de ambiente por integrações nativas com Secrets Managers, buscando os valores dinamicamente em tempo de execução.",
+        "Implementar mascaramento de dados confidenciais (PII/Senhas) nas bibliotecas de log do código fonte."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão de concorrência e Negação de Carteira (Denial of Wallet).",
+      "scenario": "Um atacante gera milhares de requisições simultâneas para um endpoint atrelado a uma função Serverless. Isso força o provedor a instanciar milhares de contêineres temporários, esgotando a cota global de concorrência da conta e gerando uma fatura astronômica.",
+      "countermeasures": [
+        "Definir limites de concorrência reservada (Reserved Concurrency) para a função, impedindo que ela escale infinitamente.",
+        "Posicionar um API Gateway com proteção WAF e Rate Limiting à frente da função para barrar o tráfego volumétrico malicioso."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Permissões excessivas na identidade de execução da função (Over-privileged Execution Role).",
+      "scenario": "Para facilitar o desenvolvimento, a função recebe a permissão IAM s3:*. O código sofre de uma falha de injeção de comandos (RCE). O atacante explora a falha e utiliza as permissões da própria função para deletar todos os buckets da conta.",
+      "countermeasures": [
+        "Aplicar estritamente o Princípio do Menor Privilégio na Role de execução, limitando as ações e especificando exatamente o ARN dos recursos que a função pode acessar."
+      ]
+    }
+  ]
+}

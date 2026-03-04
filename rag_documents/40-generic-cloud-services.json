@@ -1,0 +1,59 @@
+{
+  "class_id": "40",
+  "class_name": "Generic Cloud Services",
+  "description": "Esta classe engloba a segurança do inquilino (Tenant/Plataforma Global), abrangendo a proteção macro da organização. Os ataques a este nível não focam uma aplicação isolada; visam anular a conta principal e todos os mecanismos de defesa. É o cenário de desastre (Doomsday Scenario) em que cibercriminosos ou atores estatais adquirem as \"chaves do reino\".",
+  "components": [
+    "aws_cloud",
+    "azure_services"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Comprometimento da Conta Raiz (Root/Tenant Admin).",
+      "scenario": "O cibercriminoso rouba a credencial e acessa o portal da empresa com o principal e-mail do inquilino global ou através de credenciais obsoletas sem MFA, e começa imediatamente a redefinir credenciais secundárias.",
+      "countermeasures": [
+        "Guardar senhas e dispositivos de duplo fator (Hard Tokens) das Contas Raiz em cofres mecânicos ou digitais restritos (\"Break Glass Procedures\"); estas contas nunca devem ser utilizadas em operações diárias."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Desativação metódica de Posturas e Normas de Segurança globais (Tenant Security Defaults).",
+      "scenario": "Antes de começar um ataque de expansão ou exfiltração, os cibercriminosos desativam silenciosamente proteções críticas como o Azure Security Center / Microsoft Defender for Cloud ou o AWS GuardDuty no nível de conta, operando indetectáveis durante o resto do processo ofensivo.",
+      "countermeasures": [
+        "Utilizar Restrições Severas, como Service Control Policies (SCPs) na conta de Gerenciamento Mestre, bloqueando a desativação ou interrupção de ferramentas de observabilidade e segurança globais em contas satélite ou filhas."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Uso de plataformas não reguladas fora da conta matriz da empresa (Shadow IT na Cloud).",
+      "scenario": "Uma equipe cria serviços na Nuvem fora da zona corporativa compartilhada para não ter de sujeitar a arquitetura a políticas e aprovações dos departamentos de TI ou Cibersegurança. Quando ocorrem infrações, não há telemetria.",
+      "countermeasures": [
+        "Aplicar a configuração das Ferramentas de Gerenciamento da Configuração na Nuvem (CSPM) e Gestão da Estrutura Central (Azure Management Groups ou AWS Organizations) por padrão nas organizações para que a governança e limites orçamentários afetem toda a expansão."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Vazamento de informação em requisições de Suporte Técnico ou Metadados.",
+      "scenario": "Durante um incidente ou migração, engenheiros publicam configurações de rede em claro, capturas e fragmentos de código arquitetural sigilosos nos tickets de suporte técnico, os quais podem ser obtidos por intervenientes internos que só monitoram plataformas operacionais.",
+      "countermeasures": [
+        "Exigir que a proteção automática das telas oculte, no console global e nas transcrições automatizadas do Help Desk, todos os IDs internos de banco de dados e de chaves criptográficas da empresa ao abrir casos de análise de infraestrutura."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Suspensão da assinatura de cloud devido a estorno de pagamentos ou cartões corrompidos.",
+      "scenario": "O cartão de crédito corporativo, utilizado por engano numa conta corporativa primordial, caduca, entra em litígio ou não consegue gerir faturas de Negação de Carteira provocadas na plataforma, desencadeando um processo de suspensão drástica e automática dos recursos operacionais de nuvem em poucos dias.",
+      "countermeasures": [
+        "Ativar avisos rigorosos e delegar alarmes de falha operacional a equipes cruzadas de compras e cibersegurança e aderir obrigatoriamente a opções contratuais anuais e faturamentos baseados no volume em detrimento de esquemas automatizados de cartões bancários de pequeno alcance."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Vulnerabilidades ou isolamentos não cumpridos através de partilhas da infraestrutura subjacente do Fornecedor (Cross-Tenant Vulnerabilities).",
+      "scenario": "Bastante raro, este ataque de dia-zero (Zero Day) acontece quando um invasor utiliza um erro gravíssimo nas APIs nativas do provedor na Cloud para saltar a segregação lógica entre empresas, lendo ou interagindo a partir da sua assinatura de \"atacante\" para o sistema de \"vítima\" da sua empresa.",
+      "countermeasures": [
+        "Adotar criptografias de base gerenciadas pelas chaves exclusivas do seu cliente (BYOK/CMK) em todas as esferas do fluxo da arquitetura corporativa para se proteger não apenas do perigo cibernético exterior e interior da empresa, mas também caso ocorram invasões nas camadas fundamentais operadas ou detidas pelo seu fornecedor público da nuvem."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "class_id": "29",
+  "class_name": "Data Integration and ETL",
+  "description": "As ferramentas de Integração de Dados e ETL (Extract, Transform, Load), como o Azure Data Factory (ADF), são os motores pesados da engenharia de dados. Eles possuem a capacidade de ler repositórios inteiros e gravá-los em outros locais. O risco crítico nesta classe é o movimento lateral: como essas ferramentas frequentemente usam agentes locais (Integration Runtimes) para conectar a nuvem aos bancos de dados internos (On-Premises), o comprometimento da ferramenta de ETL cria uma ponte direta para invadir a rede corporativa fechada.",
+  "components": [
+    "azure_data_factories"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de origem na submissão de Jobs de processamento.",
+      "scenario": "Uma credencial de Service Principal vaza e o atacante a utiliza para invocar as APIs do Data Factory, iniciando pipelines de cópia de dados não autorizados que enviam informações da empresa para um servidor de armazenamento externo.",
+      "countermeasures": [
+        "Limitar a execução de pipelines a identidades estritamente controladas e combinar restrições de IP de firewall com Private Endpoints (PrivateLink), garantindo que as chamadas de API do ETL só possam ser feitas a partir da rede privada interna corporativa."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Adulteração das lógicas de transformação (Data Poisoning).",
+      "scenario": "Um invasor altera um script de transformação de dados dentro do pipeline (ex: um Data Flow ou um script do Databricks chamado pelo ADF). Em vez de apenas limpar os dados, o script passa a alterar silenciosamente valores financeiros (como contas de destino de pagamentos) antes que eles cheguem ao Data Warehouse.",
+      "countermeasures": [
+        "Implementar integração obrigatória com repositórios Git (Git-backed Data Factory). Nenhuma alteração no pipeline pode ir para produção sem um Pull Request revisado e aprovado.",
+        "Isolar os ambientes de ETL (Dev/QA/Prod) e garantir que a conta de automação de deploy seja a única com permissões de gravação no ADF de produção."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Movimentação massiva de dados sem auditoria de plano de controle.",
+      "scenario": "Centenas de gigabytes de dados de clientes são exportados do banco relacional para arquivos CSV no Storage. O processo foi feito por um pipeline de ETL ad-hoc (criado temporariamente). Após a extração, o pipeline é deletado pelo atacante, não restando logs de quem configurou aquela extração.",
+      "countermeasures": [
+        "Configurar o envio contínuo dos logs de diagnóstico (Activity Runs, Pipeline Runs, Trigger Runs) para um serviço de SIEM/Log Analytics protegido por políticas de retenção imutáveis."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exfiltração de chaves de conexão (Linked Services) ou vazamento via Runtimes.",
+      "scenario": "Um Linked Service (Conector) é configurado com a string de conexão e senha do banco de dados inseridas em texto claro na configuração. Um desenvolvedor com acesso de leitura copia essa string e acessa o banco diretamente de sua máquina pessoal.",
+      "countermeasures": [
+        "Nunca armazenar senhas em Linked Services. Integrá-los obrigatoriamente a um Key Vault, de onde o ADF puxará o segredo dinamicamente durante a execução.",
+        "Criptografar as credenciais armazenadas localmente nos Self-Hosted Integration Runtimes (Agentes locais) usando certificados digitais robustos."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão do Integration Runtime (IR) ou do banco de dados de origem.",
+      "scenario": "Um atacante interno executa múltiplos pipelines de ETL pesados concorrentemente. Isso não apenas esgota a capacidade de computação do cluster de integração (causando falha em jobs legítimos), mas também gera um lock (bloqueio) nas tabelas do banco de dados de origem, parando a aplicação em produção.",
+      "countermeasures": [
+        "Configurar limites de concorrência nos pipelines e estabelecer janelas de execução estritas (fora do horário de pico) para extrações pesadas.",
+        "Escalonar Integration Runtimes em clusters com alta disponibilidade e autoescalonamento contido."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Ataque de salto (Pivoting) da Nuvem para o ambiente On-Premises.",
+      "scenario": "A organização utiliza um Self-Hosted Integration Runtime instalado em um servidor interno para conectar o ADF da nuvem ao banco de dados local. Um atacante compromete a instância do ADF na nuvem e, explorando o canal de comunicação reversa do agente, consegue executar comandos arbitrários no servidor de banco de dados interno da empresa.",
+      "countermeasures": [
+        "Isolar os nós do Integration Runtime local em uma rede segmentada (DMZ interna) estritamente controlada.",
+        "Rodar o serviço do agente local com uma conta de sistema operacional de baixo privilégio e limitar rigorosamente o acesso de rede dele (via firewall) apenas às portas do banco de dados alvo."
+      ]
+    }
+  ]
+}

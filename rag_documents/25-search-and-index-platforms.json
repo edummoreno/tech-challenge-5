@@ -1,0 +1,63 @@
+{
+  "class_id": "25",
+  "class_name": "Search and Index Platforms",
+  "description": "Motores de busca e indexação (como Solr, Elasticsearch ou OpenSearch) são cruciais para oferecer buscas rápidas e complexas em catálogos ou logs. O grande risco arquitetural dessa classe é que ela frequentemente armazena uma cópia quase exata dos dados do banco principal, mas, historicamente, as equipes esquecem de replicar as mesmas restrições rigorosas de acesso (RBAC) que existem no banco relacional, tornando o motor de busca um alvo \"macio\" para vazamentos de dados maciços.",
+  "components": [
+    "solr"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Acesso direto não autenticado à API do motor de busca.",
+      "scenario": "O cluster do Solr é provisionado em uma rede acessível e não possui autenticação ativada por padrão. Um atacante descobre o IP/porta (como a famosa porta 8983), conecta-se diretamente à API REST e passa a executar consultas passando-se por um administrador interno.",
+      "countermeasures": [
+        "Exigir autenticação obrigatória (Basic Auth, Kerberos ou integração com provedor de identidade via mTLS) para qualquer interação com as APIs de busca e administração.",
+        "Isolar completamente o cluster em sub-redes privadas, bloqueando o acesso de IPs que não pertençam aos microsserviços autorizados."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Envenenamento de Índice (Index Poisoning).",
+      "scenario": "Um atacante explora uma falha na aplicação que envia dados ao Solr e injeta documentos com conteúdos maliciosos, links de phishing ou metadados alterados. Quando os usuários legítimos fazem buscas no portal, o motor retorna os resultados envenenados no topo das pesquisas.",
+      "countermeasures": [
+        "Sanitizar estritamente todos os dados na camada da aplicação antes de enviá-los para o processo de indexação.",
+        "Separar as permissões: as aplicações voltadas ao usuário final devem ter credenciais estritas de Somente Leitura (Read-Only) no motor de busca, nunca de escrita."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Extração de grandes volumes de informações do índice sem registro.",
+      "scenario": "Uma credencial interna é usada para executar uma consulta irrestrita (ex: q=*:*), extraindo toda a base de clientes do Solr. Como o sistema de busca foi configurado apenas para logar erros e não consultas bem-sucedidas (por questões de performance), é impossível rastrear quem realizou a exfiltração.",
+      "countermeasures": [
+        "Habilitar os logs de auditoria de consultas (Query Audit Logs), amostrando e registrando o IP de origem e o conteúdo de buscas que retornem volumes massivos de dados."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Quebra de isolamento lógico de dados (Tenant Data Leakage).",
+      "scenario": "Em uma arquitetura multilocatário (multi-tenant), todos os dados dos clientes ficam no mesmo índice. O backend constrói a consulta concatenando strings. O atacante manipula o campo de busca injetando operadores lógicos do Solr, escapando do seu \"ID de cliente\" e forçando o motor a retornar documentos pertencentes a outras empresas.",
+      "countermeasures": [
+        "Evitar a concatenação de strings na construção de consultas; utilizar APIs parametrizadas ou bibliotecas de clientes seguras.",
+        "Implementar filtros obrigatórios de isolamento (Filter Queries - fq) validados no backend (e não no frontend) que restrinjam a busca ao ID do locatário autenticado."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Esgotamento de recursos por consultas complexas (ReDoS/Algorithmic Complexity Attacks).",
+      "scenario": "Motores de busca suportam consultas ricas. Um atacante envia intencionalmente uma requisição contendo Expressões Regulares (Regex) extremamente complexas, curingas com alta expansão (ex: *a*b*c*) ou junções pesadas. O cluster do Solr trava tentando computar a resposta, consumindo 100% da CPU e da RAM.",
+      "countermeasures": [
+        "Limitar o tempo máximo de execução por consulta (Query Timeouts) diretamente na configuração do motor.",
+        "Bloquear a execução de operadores de busca custosos (como leading wildcards) e aplicar rate limiting rigoroso em rotas de pesquisa abertas ao público."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Execução Remota de Código (RCE) via desserialização ou falhas de plugins.",
+      "scenario": "Ferramentas Java como o Solr historicamente sofrem de falhas de RCE (ex: vulnerabilidades no Log4j ou Velocity templates). O atacante envia um payload na consulta HTTP que não apenas pesquisa dados, mas executa comandos de shell no sistema operacional hospedeiro, virando o administrador da máquina.",
+      "countermeasures": [
+        "Manter o cluster com aplicação rigorosa de correções (Patching contínuo).",
+        "Desativar plugins de recursos dinâmicos (como edição de configurações via API ou injeção de scripts) se não forem absolutamente essenciais, e rodar o processo do Solr com um usuário de SO de privilégio mínimo."
+      ]
+    }
+  ]
+}

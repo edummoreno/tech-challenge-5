@@ -1,0 +1,63 @@
+{
+  "class_id": "21",
+  "class_name": "Managed SQL Instances",
+  "description": "Esta classe representa um modelo híbrido poderoso. Diferente do Banco de Dados PaaS isolado, a Managed Instance oferece quase 100% de compatibilidade com os recursos do SQL Server on-premise (como CLR, Linked Servers, Service Broker) e reside diretamente dentro da sub-rede do cliente (VNet Injection). O risco aqui é mais elevado que na classe anterior, pois funcionalidades legadas introduzem vetores para comprometer não apenas o dado, mas também saltar do banco para sistemas internos e sistemas operacionais.",
+  "components": [
+    "azure_sql_managed_instance"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Abuso de confiança entre redes emparelhadas (VNet/VPC Peering).",
+      "scenario": "A Managed Instance está injetada em uma VNet emparelhada com o ambiente de Desenvolvimento. O atacante compromete uma máquina vulnerável em Dev e, aproveitando-se da segmentação insuficiente e da confiança excessiva entre as redes, alcança a instância produtiva utilizando o tráfego roteado legitimamente.",
+      "countermeasures": [
+        "Isolar a Managed Instance em uma sub-rede dedicada (Delegated Subnet) sem tráfego misto.",
+        "Utilizar Network Security Groups (NSGs) aplicados à sub-rede da MI para permitir tráfego estrito apenas de IPs e portas das aplicações de produção conhecidas, ignorando tráfego de ambientes inferiores."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Execução de código malicioso através de integração com o sistema operacional (CLR).",
+      "scenario": "Como a Managed Instance suporta a execução de código .NET integrado (Common Language Runtime), um atacante que consiga injeção de SQL ou credenciais administrativas carrega uma biblioteca DLL maliciosa e executa comandos diretamente no nível do sistema operacional subjacente.",
+      "countermeasures": [
+        "Manter o recurso de integração CLR desativado (clr enabled = 0) a menos que seja um requisito funcional absoluto da aplicação legada.",
+        "Utilizar políticas de segurança no nível do banco para assinar digitalmente e restringir quais assemblies podem ser carregados no servidor."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Modificações críticas de configurações do servidor sem registro.",
+      "scenario": "Um invasor altera regras de auditoria ou adiciona um novo Linked Server apontando para um servidor externo malicioso, facilitando o roubo de dados contínuo sem que alertas sejam disparados por ferramentas de monitoramento de configuração padrão.",
+      "countermeasures": [
+        "Ativar a Auditoria do Azure SQL (Azure SQL Auditing) no nível do servidor (e não apenas do banco) e direcionar os logs imediatamente para um Log Analytics Workspace protegido."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exfiltração via Servidores Vinculados (Linked Servers) ou Backups expostos.",
+      "scenario": "A criptografia transparente de dados (TDE) foi desabilitada para manutenção. O atacante consegue acesso à conta de armazenamento (Storage Account) interna onde a Managed Instance salva seus backups de log e dados automaticamente, baixando os arquivos não encriptados.",
+      "countermeasures": [
+        "Impor a Criptografia Transparente de Dados (TDE) permanentemente com chaves gerenciadas pelo cliente guardadas no Azure Key Vault.",
+        "Configurar o firewall do Storage Account que retém os backups para negar todo tráfego público, permitindo acesso apenas da sub-rede da Managed Instance."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Esgotamento crítico do banco de dados temporário (TempDB).",
+      "scenario": "Consultas mal otimizadas ou ataques direcionados geram tabelas temporárias gigantescas. Como as Managed Instances possuem limites de armazenamento para o TempDB, ele rapidamente se enche a 100%, paralisando totalmente todas as operações de gravação e processamento na instância.",
+      "countermeasures": [
+        "Otimizar o código das consultas legadas migrando o processamento lógico pesado para a camada de aplicação.",
+        "Configurar o Azure Monitor para alertar preventivamente quando o uso de disco do TempDB ultrapassar limites de segurança (ex: 80%)."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Herança perigosa de permissões Sysadmin exigidas por sistemas legados.",
+      "scenario": "Um sistema ERP antigo foi migrado (Lift and Shift) para a Managed Instance e, por deficiência de arquitetura, exige que a conexão da aplicação seja feita com a função sysadmin. Se a aplicação for invadida, o atacante vira o \"dono\" da máquina, podendo alterar senhas, rotear tráfego ou deletar as bases da empresa inteira.",
+      "countermeasures": [
+        "Refatorar obrigatoriamente o modelo de acesso do sistema legado, removendo a exigência de papéis de servidor (sysadmin, securityadmin) e limitando os papéis a proprietários de bancos de dados específicos (db_owner).",
+        "Migrar a autenticação para o Microsoft Entra ID (antigo Azure AD) com acesso condicional e tokens locais em vez de credenciais SQL nativas."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "class_id": "03",
+  "class_name": "API Gateway and API Management",
+  "description": "O API Gateway atua como a porta de entrada principal para os microserviços e funções serverless. O foco aqui é proteção de borda, validação de entrada e roteamento seguro.",
+  "components": [
+    "api",
+    "aws_api_gateway",
+    "azure_api_management_services"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de tokens de acesso ou identidade do chamador.",
+      "scenario": "Um atacante captura um token JWT de outra aplicação. O API Gateway aceita o token devido a uma validação incompleta (falha ao checar os campos 'issuer' ou 'audience', ou chaves JWKS desatualizadas) ou um authorizer customizado configurado de forma muito permissiva, permitindo acesso indevido ao backend.",
+      "countermeasures": [
+        "Forçar a validação nativa de JWT (assinatura, emissor, expiração) diretamente no API Gateway antes do roteamento.",
+        "Exigir Mutual TLS (mTLS) para conexões B2B críticas ou comunicações server-to-server."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção de código ou manipulação de parâmetros na requisição.",
+      "scenario": "Um atacante injeta uma carga útil de SQL Injection ou NoSQL Injection no corpo (body) de um POST. O API Gateway atua apenas como um proxy cego e repassa a carga maliciosa para um banco de dados de backend.",
+      "countermeasures": [
+        "Habilitar validação estrita de modelo (Schema Validation) no Gateway para rejeitar requisições que não correspondam ao formato JSON/XML esperado.",
+        "Integrar o Gateway a um WAF (Web Application Firewall) para inspecionar e bloquear padrões da OWASP Top 10."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Falta de rastreabilidade em chamadas de API que alteram estado.",
+      "scenario": "Um cliente contesta uma transação financeira realizada via API. Como os logs de execução do Gateway estão desativados para reduzir custos, a equipe não consegue provar qual IP ou token originou a chamada exata.",
+      "countermeasures": [
+        "Habilitar Access Logs detalhados com Correlation IDs (ex: X-Amzn-Trace-Id) para permitir rastreabilidade de ponta a ponta.",
+        "Mascarar dados sensíveis (PII) nos logs da API antes de enviá-los ao repositório central."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Vazamento de detalhes da infraestrutura interna através de respostas da API.",
+      "scenario": "O serviço de backend sofre um crash e retorna um erro HTTP 500 contendo o stack trace completo do servidor. O Gateway repassa essa resposta, revelando o caminho dos diretórios internos, versões de frameworks e possivelmente credenciais.",
+      "countermeasures": [
+        "Implementar mapeamento de respostas (Custom Error Responses) no Gateway para padronizar erros genéricos (ex: \"Internal Server Error\") e mascarar a falha original.",
+        "Forçar comunicação TLS 1.2+ e bloquear o uso de query strings para envio de dados sensíveis (como senhas)."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Sobrecarga de endpoints que esgotam recursos do backend.",
+      "scenario": "Um botnet realiza milhares de chamadas por segundo na rota de pesquisa de produtos (GET /search), sobrecarregando o banco de dados interno e derrubando toda a plataforma de e-commerce.",
+      "countermeasures": [
+        "Configurar limites de taxa de requisição (Rate Limiting e Throttling) por IP ou token.",
+        "Implementar Usage Plans com chaves de API (API Keys) para definir cotas máximas de consumo diário/mensal por cliente."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Acesso a rotas administrativas usando um token de baixo privilégio.",
+      "scenario": "Um usuário possui um token legítimo com escopo apenas de leitura (read:data). Ele descobre a rota POST /admin/delete e faz a chamada. O Gateway verifica que o token é válido, mas falha em checar se o usuário tem a permissão (scope) para executar aquela ação.",
+      "countermeasures": [
+        "Implementar autorização baseada em RBAC/ABAC no nível da rota no API Gateway, validando ativamente os scopes do OAuth2 ou acionando funções customizadas de autorização (ex: Lambda Authorizers)."
+      ]
+    }
+  ]
+}

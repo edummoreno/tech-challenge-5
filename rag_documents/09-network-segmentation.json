@@ -1,0 +1,58 @@
+{
+  "class_id": "09",
+  "class_name": "Network Segmentation",
+  "description": "Os Network Security Groups (NSGs) ou Security Groups agem como firewalls stateful virtuais no nível da placa de rede (NIC) ou sub-rede. Eles são essenciais para a microsegmentação, limitando o raio de explosão (Blast Radius) caso uma máquina seja comprometida.",
+  "components": [
+    "azure_network_security_groups"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Instância maliciosa tenta se comunicar como se fosse uma aplicação confiável.",
+      "scenario": "Uma VM recém-criada tenta se conectar ao banco de dados. O NSG do banco de dados permite tráfego de toda a sub-rede 10.0.1.0/24. Isso significa que qualquer recurso lá dentro é \"confiável\" por padrão, facilitando ataques internos.",
+      "countermeasures": [
+        "Em vez de usar IPs ou CIDRs genéricos, criar regras baseadas em Application Security Groups (ASGs). O banco de dados só deve aceitar tráfego de VMs marcadas explicitamente como \"Frontend-App\", independentemente do IP delas na sub-rede."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção de regras inseguras no NSG.",
+      "scenario": "Durante a resolução de um incidente de madrugada (Troubleshooting), um analista abre temporariamente a porta 22 (SSH) no NSG para o mundo (0.0.0.0/0) e esquece de fechar depois. A máquina passa a sofrer força bruta constante.",
+      "countermeasures": [
+        "Utilizar serviços como Azure Defender / Security Center (Just-In-Time Access) para abrir portas de gerenciamento apenas sob demanda e com tempo de expiração automático, revogando o acesso logo em seguida."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Movimentação lateral na rede sem rastreabilidade.",
+      "scenario": "Um atacante compromete o servidor web e, a partir dele, escaneia e ataca o servidor de arquivos interno. Como a comunicação ocorre dentro da mesma VNet, ela não passa pelo Firewall Central. Sem logs do NSG, a movimentação lateral fica invisível.",
+      "countermeasures": [
+        "Habilitar os NSG Flow Logs enviados para um Log Analytics Workspace e utilizar o Traffic Analytics para detectar anomalias em comunicações Leste-Oeste (tráfego interno entre sub-redes)."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Permissões de saída excessivas facilitando a exfiltração de dados.",
+      "scenario": "O NSG tem a regra padrão do provedor que permite tráfego irrestrito de saída para a Internet (AllowVnetOutBound). Se um servidor for comprometido e compactar o banco de dados, ele consegue facilmente fazer upload desses dados para um bucket S3 na conta do atacante.",
+      "countermeasures": [
+        "Adotar uma postura de Default Deny explícito para saída (Egress). Servidores de banco de dados e de aplicação não devem acessar a internet livremente. Liberar apenas os Service Tags estritamente necessários (ex: acesso ao Storage ou Key Vault)."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Bloqueio acidental de tráfego crítico causando indisponibilidade.",
+      "scenario": "Um script de automação mal testado aplica um novo NSG na sub-rede de produção que bloqueia acidentalmente as portas de verificação de integridade (Health Probes) do Load Balancer. O Load Balancer acha que todos os servidores caíram e interrompe o roteamento do tráfego.",
+      "countermeasures": [
+        "Validar as mudanças em NSGs usando ferramentas nativas (como Network Watcher / IP Flow Verify na Azure ou VPC Reachability Analyzer na AWS) para testar o impacto das regras antes da implantação."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Ataque de pivô (Pivoting) e falha na inspeção Leste-Oeste (East-West).",
+      "scenario": "A arquitetura não possui segmentação adequada. O atacante compromete um portal de desenvolvedores (Frontend de baixa segurança). Como há um vácuo de inspeção de tráfego Leste-Oeste (East-West traffic inspection gap) e nenhum NSG bloqueando a comunicação interna, ele escala seus privilégios acessando APIs de gerenciamento críticas da rede de backend.",
+      "countermeasures": [
+        "Aplicar microsegmentação rigorosa (Zero Trust de rede). Isolar ambientes e camadas com regras de NSG explícitas, garantindo que o Web nunca fale diretamente com a camada Data, forçando a inspeção entre camadas."
+      ]
+    }
+  ]
+}

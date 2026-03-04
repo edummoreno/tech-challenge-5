@@ -1,0 +1,67 @@
+{
+  "class_id": "06",
+  "class_name": "Public Load Balancing",
+  "description": "Os balanceadores de carga públicos são a principal barreira de tráfego de rede da aplicação. Eles recebem o tráfego da internet, descriptografam (TLS Offloading) e distribuem para as máquinas e contêineres privados.",
+  "components": [
+    "gcp_cloud_load_balancing",
+    "aws_application_load_balancer",
+    "aws_elastic_load_balancing",
+    "aws_elastic_load_balancing_application_load_balancer",
+    "aws_elastic_load_balancing_network_load_balancer",
+    "azure_load_balancers"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Evasão do balanceador de carga ou manipulação de cabeçalhos de origem.",
+      "scenario": "Um atacante injeta um cabeçalho X-Forwarded-For falso. Como o servidor de backend está configurado para confiar cegamente nesse cabeçalho, sem validar se a requisição foi originada pelos IPs do Load Balancer, o atacante consegue simular que o tráfego se origina de um IP interno ou de um administrador.",
+      "countermeasures": [
+        "Configurar os Security Groups das instâncias/contêineres de backend para aceitarem tráfego exclusivamente dos IPs/Security Groups do Load Balancer.",
+        "Garantir que a aplicação valide a cadeia de confiança do proxy antes de utilizar cabeçalhos HTTP para decisões de autorização."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Manipulação de requisições HTTP em trânsito (HTTP Request Smuggling).",
+      "scenario": "O Load Balancer e o servidor de backend interpretam cabeçalhos HTTP malformados (como Content-Length e Transfer-Encoding) de maneira diferente. O atacante envia uma requisição ambígua, \"contrabandeando\" uma segunda requisição maliciosa que o Load Balancer não vê, mas o backend executa, envenenando o cache ou roubando sessões de outros usuários.",
+      "countermeasures": [
+        "Garantir que o Load Balancer utilize configurações rigorosas de conformidade HTTP (ex: Drop Invalid Header Fields na AWS).",
+        "Manter os servidores web de backend (Nginx, Apache) sempre atualizados."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Perda da identidade do cliente original nos logs de auditoria.",
+      "scenario": "O Load Balancer faz o proxy da conexão. Os logs da aplicação no backend registram apenas o IP interno do Load Balancer em vez do IP do usuário real. Em caso de invasão, a equipe de forense não consegue descobrir de onde o ataque se originou.",
+      "countermeasures": [
+        "Configurar a aplicação de backend para extrair e logar o IP real a partir do cabeçalho X-Forwarded-For (ou habilitar o Proxy Protocol para NLBs).",
+        "Habilitar os Access Logs diretamente no Load Balancer."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Interceptação de tráfego devido a protocolos de criptografia fracos.",
+      "scenario": "O Listener HTTPS do Load Balancer está configurado com uma política de segurança obsoleta que aceita TLS 1.0 e cifras fracas (como RC4). Um atacante na mesma rede do usuário realiza um ataque Man-in-the-Middle para descriptografar e roubar credenciais em trânsito.",
+      "countermeasures": [
+        "Aplicar as políticas de segurança mais recentes e estritas no Load Balancer (ex: ELBSecurityPolicy-TLS13-1-2-2021-06 na AWS), forçando o uso exclusivo de TLS 1.2+ e cifras modernas."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão dos recursos de conexão do balanceador de carga.",
+      "scenario": "Um ataque Slowloris envia requisições HTTP extremamente lentas, mantendo as conexões do Load Balancer abertas até esgotar o pool máximo de conexões simultâneas, impedindo que usuários legítimos acessem a aplicação.",
+      "countermeasures": [
+        "Configurar timeouts adequados (idle timeout) para derrubar conexões ociosas.",
+        "Integrar o Load Balancer a serviços de proteção DDoS nativos da nuvem (como AWS Shield, Azure DDoS Protection ou Cloud Armor)."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Roteamento indevido para painéis administrativos.",
+      "scenario": "O Application Load Balancer possui regras de roteamento baseadas em caminho (Path-based routing). Uma regra mal configurada direciona o tráfego da rota /admin para os mesmos contêineres que servem o frontend público, expondo o painel de administração para a internet sem a devida autenticação de borda.",
+      "countermeasures": [
+        "Separar fisicamente o tráfego: utilizar um Load Balancer interno (privado) exclusivo para acessos administrativos (acessível apenas via VPN/Bastion) e remover qualquer regra de roteamento /admin do Load Balancer público."
+      ]
+    }
+  ]
+}

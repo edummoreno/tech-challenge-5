@@ -1,0 +1,58 @@
+{
+  "class_id": "08",
+  "class_name": "Network Firewall",
+  "description": "O Firewall de Rede opera nas Camadas 3 e 4 (e às vezes 7 para SNI/FQDN), focado em controlar o fluxo de tráfego de entrada e, criticamente, o de saída (Egress) da sua rede virtual.",
+  "components": [
+    "azure_firewalls"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Evasão de Firewall via falhas de roteamento (Bypass).",
+      "scenario": "Embora os provedores de nuvem bloqueiem o IP Spoofing clássico nativamente (via Source/Dest checks no hypervisor), um atacante que comprometa um host explora configurações fracas de Tabelas de Roteamento (UDRs) para enviar tráfego não inspecionado diretamente a outras sub-redes, burlando o Firewall Central.",
+      "countermeasures": [
+        "Garantir que as Tabelas de Roteamento (UDR) direcionem todo o tráfego inter-sub-redes obrigatoriamente para o Firewall (arquitetura Hub-and-Spoke estrita)."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Alteração não autorizada de tabelas de roteamento para evadir o Firewall.",
+      "scenario": "Um invasor com privilégios médios altera uma User Defined Route (UDR) na Azure para que o tráfego de saída da sub-rede do banco de dados vá direto para a internet, ignorando o Firewall Central onde as regras de prevenção de perda de dados (DLP) estão.",
+      "countermeasures": [
+        "Restringir quem pode modificar Tabelas de Roteamento e Regras de Firewall através de RBAC estrito e gerenciar essas configurações exclusivamente via pipeline de IaC com revisões obrigatórias (Pull Requests)."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Tráfego malicioso passando pelo firewall sem registro auditável.",
+      "scenario": "Uma máquina interna infectada começa a se comunicar com um servidor de Comando e Controle (C2) na internet. O firewall permite o tráfego (devido a uma regra permissiva na porta 443), e como os logs de diagnóstico estão desativados, a infecção passa despercebida.",
+      "countermeasures": [
+        "Habilitar logs de tráfego e métricas do Firewall integrados à inteligência de ameaças (Threat Intelligence), alertando imediatamente se IPs conhecidos por atividades maliciosas forem contatados."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição indevida da superfície e topologia via DNAT.",
+      "scenario": "Regras de Destination NAT (DNAT) mal configuradas expõem portas de gerenciamento (RDP/SSH) de instâncias internas para a internet. Isso permite que atacantes realizem escaneamento contínuo (port scanning / fingerprinting) para mapear tecnologias, versões de SO e a topologia interna disponível.",
+      "countermeasures": [
+        "Substituir regras DNAT voltadas para portas de gerenciamento por serviços de acesso seguro nativos da nuvem (como Azure Bastion ou AWS Systems Manager Session Manager), eliminando a exposição pública."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão de portas SNAT interrompendo comunicações externas.",
+      "scenario": "A aplicação sofre um pico de tráfego e os workers de processamento iniciam milhares de conexões de saída (para baixar arquivos externos ou chamar APIs de terceiros). O Firewall esgota suas portas SNAT (SNAT Port Exhaustion), e as novas conexões começam a falhar, derrubando o processamento em lote.",
+      "countermeasures": [
+        "Monitorar ativamente o uso de portas SNAT. Se o tráfego de saída for muito alto, associar múltiplos IPs públicos ao Firewall ou utilizar um recurso dedicado como o NAT Gateway para o tráfego de saída das sub-redes."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Acesso indevido ao painel de controle (Control Plane) do Firewall.",
+      "scenario": "Um usuário da equipe de operações, que deveria ter acesso apenas de leitura (Reader), consegue modificar a política do Firewall (devido a um erro de atribuição de Role na assinatura da Azure) e abre a porta do banco de dados para seu próprio IP residencial.",
+      "countermeasures": [
+        "Implementar Azure Policy para auditar ou bloquear a criação de políticas permissivas demais (ex: regra contendo destino * ou 0.0.0.0/0 em portas sensíveis) e restringir atribuições de Contributor de rede."
+      ]
+    }
+  ]
+}

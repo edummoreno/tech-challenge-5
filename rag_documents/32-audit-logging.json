@@ -1,0 +1,63 @@
+{
+  "class_id": "32",
+  "class_name": "Audit Logging",
+  "description": "Esta classe representa a trilha de auditoria do provedor de nuvem (como o CloudTrail), o registro definitivo do plano de controle: quem fez o que, quando e a partir de qual IP. É a principal testemunha contra atividades maliciosas. Diferente dos logs de aplicação (Classe 31), o comprometimento da auditoria significa que um atacante conseguiu privilégios altíssimos na nuvem para desligar as \"câmeras de segurança\" de toda a organização.",
+  "components": [
+    "aws_cloud_trail"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Evasão da trilha de auditoria via chamadas ocultas.",
+      "scenario": "A trilha de auditoria foi configurada apenas para as regiões primárias da empresa (ex: us-east-1). O atacante utiliza credenciais roubadas para provisionar recursos maliciosos em uma região distante (ex: ap-northeast-1). Como o CloudTrail não estava ativo lá, as ações do atacante forjam conformidade e permanecem invisíveis.",
+      "countermeasures": [
+        "Habilitar a configuração de Trilha Multi-Região (Multi-Region Trail) obrigatória, capturando eventos globais e de todas as regiões geográficas do provedor.",
+        "Ativar auditoria detalhada de Plano de Dados (Data Plane Events) para recursos extremamente críticos como Buckets S3 ou execuções Lambda."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Adulteração ou exclusão dos arquivos de trilha de auditoria.",
+      "scenario": "O invasor consegue elevar seus privilégios, descobre o bucket S3 onde os logs do CloudTrail são armazenados e deleta arquivos JSON específicos do dia da invasão, ou adultera os IPs registrados para incriminar terceiros.",
+      "countermeasures": [
+        "Habilitar a Validação de Arquivo de Log (Log File Validation), que utiliza assinaturas SHA-256 para garantir a integridade de que os arquivos de auditoria não foram modificados após a gravação.",
+        "Proteger o bucket de destino com políticas de Cofre (Vault/Object Lock) em modo de conformidade, impedindo a exclusão de qualquer log antes de retenção legal (ex: 365 dias)."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Paralisação voluntária da captura de eventos.",
+      "scenario": "A primeira ação do atacante ao obter credenciais administrativas é executar o comando StopLogging na trilha principal. Daquele minuto em diante, todas as ações de criação de backdoors ou exfiltração não gerarão nenhum registro. O atacante não poderá ser responsabilizado pelas ações subsequentes.",
+      "countermeasures": [
+        "Implementar alertas de tempo real (via EventBridge) caso o evento StopLogging ou DeleteTrail seja disparado.",
+        "Acoplar o alerta a uma automação de resposta a incidentes que reative a trilha instantaneamente e isole o usuário ofensor."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Acesso indevido aos repositórios de histórico de auditoria.",
+      "scenario": "A política do bucket que armazena a auditoria é muito permissiva. Um usuário interno comum acessa esses logs e realiza o mapeamento reverso de toda a estrutura da organização, descobrindo o nome de Roles ocultas, horários de manutenção e APIs críticas.",
+      "countermeasures": [
+        "Criptografar os logs de auditoria em repouso com uma Chave de Gerenciamento de Cliente (KMS CMK) de uso exclusivo.",
+        "Centralizar as trilhas em uma conta de \"Auditoria e Segurança\" isolada do ambiente de produção das aplicações."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Inundação e esgotamento via ruído de auditoria.",
+      "scenario": "Um script de enumeração malicioso dispara milhares de chamadas bloqueadas de API por segundo (Access Denied). Isso inunda o fluxo de logs do CloudTrail para o SIEM corporativo, estourando as licenças do SIEM e dificultando a localização dos eventos críticos no meio da tempestade de lixo digital.",
+      "countermeasures": [
+        "Criar regras de parsing e filtros inteligentes no pipeline de ingestão do SIEM para ignorar ruídos conhecidos ou consolidar erros repetitivos.",
+        "Monitorar métricas de volume de eventos e alertar sobre anomalias no comportamento de gravação de logs."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Alteração indevida de configuração de rotas de eventos críticos.",
+      "scenario": "Um desenvolvedor recebe permissões excessivas de administração de logs. Ele usa isso para alterar o destino (Resource Policy) dos eventos da nuvem, redirecionando cópias de eventos operacionais críticos para um bucket S3 oculto ou alterando regras do EventBridge dentro do próprio ambiente, assumindo o controle operacional da auditoria.",
+      "countermeasures": [
+        "Restringir permissões de manipulação de trilhas (cloudtrail:UpdateTrail, cloudtrail:PutEventSelectors) usando Políticas de Controle de Serviço (SCPs), liberando-as apenas para a conta raiz de Segurança."
+      ]
+    }
+  ]
+}

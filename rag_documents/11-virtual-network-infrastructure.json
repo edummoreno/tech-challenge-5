@@ -1,0 +1,69 @@
+{
+  "class_id": "11",
+  "class_name": "Virtual Network Infrastructure",
+  "description": "Esta classe engloba a fundação de rede do ambiente em nuvem (VPCs, VNets e Sub-redes), estabelecendo os limites lógicos e de isolamento de todos os recursos computacionais. É o alicerce da segurança de rede; erros de design estrutural aqui, como provisionar instâncias de banco de dados diretamente em sub-redes públicas, anulam os esforços de segurança das camadas superiores e expõem a arquitetura inteira.",
+  "components": [
+    "aws_private_subnet",
+    "aws_public_subnet",
+    "aws_virtual_private_cloud",
+    "aws_vpc_virtual_private_cloud_vpc",
+    "azure_virtual_networks",
+    "gcp_virtual_private_cloud"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de IP/MAC em instâncias com configurações de rede avançadas.",
+      "scenario": "Embora os hypervisors das nuvens públicas bloqueiem spoofing por padrão, o atacante compromete uma instância de appliance virtual (ex: firewall ou NAT) que possui a verificação de origem/destino desativada, permitindo forjar o IP interno para simular ser um gateway confiável e interceptar tráfego.",
+      "countermeasures": [
+        "Manter a verificação de Origem/Destino (Source/Dest Check) ativada em todas as instâncias por padrão, desativando apenas estritamente em appliances de rede validados.",
+        "Monitorar alterações nas configurações das interfaces de rede (ENIs/NICs) que desabilitem as proteções nativas de spoofing."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Modificação indevida de Tabelas de Roteamento (Route Tables).",
+      "scenario": "Alteração do Default Gateway da sub-rede privada para rotear o tráfego através de uma instância sob controle do atacante, possibilitando a interceptação interna (Man-in-the-Middle).",
+      "countermeasures": [
+        "Aplicar o Princípio do Menor Privilégio (Least Privilege) nas permissões de gestão de rede, isolando quem pode gerenciar a computação de quem pode gerenciar as rotas.",
+        "Monitorar mudanças ativas em componentes de Virtual Network ou VPC e gerar incidentes em caso de alterações nas tabelas principais."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Impossibilidade de rastrear a origem e destino do tráfego interno e externo.",
+      "scenario": "Ocorre uma exfiltração de dados a partir de uma sub-rede privada, mas não há logs de rede provando qual IP interno específico iniciou a conexão e para onde os pacotes foram enviados.",
+      "countermeasures": [
+        "Habilitar os Flow Logs (como VPC Flow Logs ou NSG Flow Logs) na infraestrutura de rede para capturar metadados (IP, porta, protocolo, aceitação/rejeição) do tráfego.",
+        "Roteá-los imediatamente para um armazenamento de objetos com retenção de WORM (Write-Once, Read-Many) para manter a integridade pericial."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Trânsito de dados por redes públicas em direção a serviços gerenciados (PaaS/SaaS).",
+      "scenario": "Recursos em sub-redes privadas acessam serviços como Storage ou Bancos de Dados nativos utilizando IPs públicos, forçando os dados a cruzarem o gateway de internet público.",
+      "countermeasures": [
+        "Implementar rotas diretas (como VPC Endpoints ou PrivateLink) para assegurar que a comunicação com serviços gerenciados do provedor de nuvem ocorra exclusivamente através da rede de backbone privada.",
+        "Evitar ao máximo a associação de IPs públicos (Elastic IPs/Public IPs) a recursos que só recebem tráfego por intermédio de Load Balancers ou que não atuam como barreiras."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão do bloco de IPs da sub-rede por provisionamento massivo.",
+      "scenario": "Uma falha na automação ou no escalonamento cria milhares de interfaces de rede temporárias, consumindo o bloco CIDR da sub-rede e impossibilitando o provisionamento de servidores críticos emergenciais.",
+      "countermeasures": [
+        "Estruturar a topologia com blocos CIDR amplos para sub-redes voltadas à computação altamente elástica (como clusters Kubernetes).",
+        "Criar alarmes que monitorem as métricas e avisem antecipadamente sobre o limite percentual de alocação de IPs restantes em uma sub-rede."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Quebra de isolamento roteando tráfego não autorizado entre camadas.",
+      "scenario": "A sub-rede pública (DMZ) possui roteamento irrestrito para todas as sub-redes privadas do ambiente, facilitando que um comprometimento em um servidor web sirva de trampolim para acessar os bancos de dados não expostos.",
+      "countermeasures": [
+        "Implantar Listas de Controle de Acesso de Rede (Network ACLs) atuando como uma defesa stateless e abrangente aplicada diretamente nos limites de cada sub-rede.",
+        "Remover rotas genéricas amplas e assegurar que as tabelas de roteamento internas direcionem o tráfego estritamente entre os segmentos autorizados."
+      ]
+    }
+  ]
+}

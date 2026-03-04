@@ -1,0 +1,68 @@
+{
+  "class_id": "12",
+  "class_name": "Virtual Machine Compute",
+  "description": "Esta classe representa o modelo tradicional de Infraestrutura como Serviço (IaaS), fornecendo as instâncias de computação brutas. Por ser um ambiente onde o cliente é totalmente responsável pelo gerenciamento do Sistema Operacional para cima (modelo de responsabilidade compartilhada), as Máquinas Virtuais são um dos vetores de ataque mais visados. A segurança aqui exige um forte hardening do SO, rigor na gestão de patches e proteção contra acesso administrativo não autorizado.",
+  "components": [
+    "aws_ec2",
+    "aws_ec2_instance",
+    "aws_ec2_instances",
+    "azure_virtual_machine",
+    "gcp_compute_engine"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Utilização da identidade da máquina virtual para extrair credenciais e interagir com APIs da nuvem.",
+      "scenario": "O invasor explora uma falha na aplicação hospedada e consulta o serviço de metadados da instância (IMDS), conseguindo roubar o token de acesso da máquina e interagir livremente com recursos do ambiente.",
+      "countermeasures": [
+        "Exigir mandatoriamente o uso de versões seguras do serviço de metadados (como o IMDSv2 da AWS) que utilizem processos baseados em sessão protegidos contra Server-Side Request Forgery (SSRF).",
+        "Designar papéis e permissões (Roles/Managed Identities) dedicados e com escopo mínimo aplicável a cada máquina virtual em particular."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Corrupção de binários do sistema operacional, instalação de Ransomware ou Rootkits.",
+      "scenario": "Após obter acesso inicial através de um serviço vulnerável, o atacante eleva seus privilégios locais e instala agentes maliciosos (backdoors) persistentes nos diretórios vitais do sistema da VM.",
+      "countermeasures": [
+        "Gerar e utilizar imagens de sistema operacional endurecidas (Golden Images/Hardened AMIs) elaboradas com base nos benchmarks de segurança do CIS (Center for Internet Security).",
+        "Instalar agentes de proteção avançada (Endpoint Detection and Response - EDR) e monitoramento contínuo de integridade de arquivos (FIM) dentro das instâncias."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Operações em nível de sistema operacional executadas de forma anônima.",
+      "scenario": "Uma pessoa com acesso remoto (via porta 22 ou 3389) acessa a máquina, executa comandos deletérios que desestabilizam o servidor de produção e desconecta, não deixando registros das entradas inseridas no terminal.",
+      "countermeasures": [
+        "Eliminar a necessidade de abertura direta de portas SSH ou RDP nos Firewalls / Security Groups; substituir conexões diretas por serviços de sessão nativos da nuvem (como o Systems Manager ou Azure Bastion) que intermedeiam as conexões.",
+        "Configurar o envio contínuo e obrigatório das logs de auditoria locais (syslog/event viewer) das sessões de terminal e autenticação para um diretório unificado e externo."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Extração não autorizada de dados persistidos nos discos.",
+      "scenario": "Uma cópia de segurança indevida (Snapshot) do disco rígido não encriptado é gerada e transferida para um ambiente externo não controlado pela empresa, revelando o código-fonte inteiro da aplicação e informações ali mantidas.",
+      "countermeasures": [
+        "Criptografar sistematicamente os volumes de armazenamento de blocos associados (ex: EBS ou Discos Gerenciados) mediante chaves sob o gerenciamento da própria organização.",
+        "Restringir direitos de criação de imagens (Snapshotting) ou clonagem a contas restritas unicamente a ações de recuperação ou automação."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Esgotamento da capacidade computacional afetando a responsividade.",
+      "scenario": "Um pico agudo provocado por injeção maliciosa de processos de mineração de criptomoedas (Cryptojacking) devora os ciclos de CPU da instância, tornando os serviços regulares lentos e propensos a falhas sucessivas.",
+      "countermeasures": [
+        "Associar limites de contenção nos serviços da máquina ou estabelecer alertas de observabilidade frente ao uso anormal prolongado de processamento.",
+        "Incorporar a máquina virtual a arquiteturas elásticas (Grupos de Auto Scaling), possibilitando o encerramento automático do nó comprometido e o ingresso de um substituto limpo."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Exploração de deficiências de patching promovendo a fuga de processos para o contexto do sistema operativo.",
+      "scenario": "O serviço em rede atua como o usuário administrador (ex: root/System). Uma falha descoberta no software utilizado pela aplicação concede acesso equivalente para o cibercriminoso realizar qualquer manipulação desejada no sistema.",
+      "countermeasures": [
+        "Rodar os serviços de negócio sob usuários locais com privilégios reduzidos ao estritamente necessário (não-root).",
+        "Dispor de processos sistêmicos encarregados de averiguar falhas críticas em pacotes ou kernel e aplicar as correções pertinentes (Gerenciamento de Vulnerabilidades e Patching automático)."
+      ]
+    }
+  ]
+}

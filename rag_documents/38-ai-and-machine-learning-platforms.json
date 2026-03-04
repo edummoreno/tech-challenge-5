@@ -1,0 +1,63 @@
+{
+  "class_id": "38",
+  "class_name": "AI and Machine Learning Platforms",
+  "description": "Esta classe lida com o ciclo de vida da Inteligência Artificial: desde a ingestão de dados para treinamento (MLOps) até aos endpoints de inferência, como os grandes modelos de linguagem (LLMs). É a fronteira de ataque mais recente. As ameaças expandem-se além do acesso à infraestrutura e penetram na manipulação da própria lógica do modelo, onde comandos injetados na linguagem natural podem levar a RCE (Execução Remota de Código) — caso o modelo esteja integrado a sistemas externos com execução automática (Tool Use / Function Calling) — ou resultar em violação profunda da privacidade.",
+  "components": [
+    "azure_machine_learning",
+    "azure_machine_learning_studio_workspaces",
+    "azure_openai",
+    "gcp_vertex_ai"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Invocação forjada ao Endpoint de Inferência para evasão de controles.",
+      "scenario": "O acesso à API do modelo OpenAI está exposto ou possui controles fracos. O atacante utiliza um token exposto para enviar milhares de consultas ao modelo através dos seus próprios scripts, passando a sua identidade pela da aplicação legítima e consumindo recursos dispendiosos.",
+      "countermeasures": [
+        "Restringir o acesso aos endpoints de modelos gerenciados a redes virtuais privadas (VNet/VPC) ou proteger os canais públicos com autenticação robusta (AAD/IAM) e limites por identidade real."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Envenenamento de Dados de Treinamento (Data/Model Poisoning).",
+      "scenario": "A base de dados não estruturada que alimenta o Fine-Tuning do modelo é alterada por um atacante interno ou através da manipulação de fontes públicas raspadas (Web Scraping). O atacante injeta vieses ou backdoors lógicos. Posteriormente, quando um usuário formula uma pergunta específica, o modelo gera propositadamente um código malicioso disfarçado de resposta legítima.",
+      "countermeasures": [
+        "Assinar e verificar a proveniência dos conjuntos de dados e proteger as origens de treinamento com controles de acesso rigorosos (Somente Leitura).",
+        "Implementar auditoria contínua dos modelos (Red Teaming de IA) e testes contra a deriva e corrupção do modelo (Model Drift Evaluation)."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Incapacidade de explicar as decisões de IA ou de registrar as interações (Prompt Logging).",
+      "scenario": "O modelo de IA integrado num sistema de saúde ou financeiro emite uma recomendação perigosa que leva a prejuízos. A empresa não consegue identificar que dados exatos geraram essa resposta, nem que prompts foram enviados num momento específico, gerando um passivo legal severo e sem culpados rastreáveis.",
+      "countermeasures": [
+        "Habilitar o rastreio e registro abrangente dos modelos (Model Telemetry & Prompt Logging), assegurando que tanto as prompts de entrada como os resultados e o nível de confiança (Confidence Score) ficam registrados para auditoria."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Vazamento de Prompts e Inversão de Modelos (Prompt Leaking e Model Inversion).",
+      "scenario": "Um atacante utiliza técnicas de injeção de comandos (Prompt Injection) concebidas para confundir o raciocínio do modelo. O LLM acaba por \"ignorar as instruções prévias\" e regurgita os dados de treinamento confidenciais da empresa (PII) ou revela a instrução de sistema (System Prompt) secreta e as chaves de integração.",
+      "countermeasures": [
+        "Integrar filtros robustos de segurança de conteúdos e análise de anomalias (como o Azure AI Content Safety) diretamente nas respostas.",
+        "Isolar ferramentas que utilizam Retrieval-Augmented Generation (RAG) utilizando RBAC no momento de obter as passagens de texto, não passando ao modelo documentos aos quais o usuário final não tenha acesso nativo."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Esgotamento de recursos por complexidade da Prompt (Negação de Carteira - EEDoS).",
+      "scenario": "Um invasor cria scripts para enviar repetidamente pedidos de geração de texto ou processamento de imagens extremamente complexos. Ao esgotar os tokens da infraestrutura LLM, os clientes reais ficam impedidos de utilizar a IA e o faturamento do serviço atinge o limite do orçamento diário.",
+      "countermeasures": [
+        "Aplicar limitação agressiva na contagem máxima de tokens gerados e na quantidade de transações por minuto (Rate Limiting) diretamente aos perfis ou chaves de acesso."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Injeção de Prompts Indiretas para RCE ou Escalada em Agentes de IA.",
+      "scenario": "O modelo de IA foi integrado num sistema interno (como um bot de HR) e tem permissões autônomas para agir e invocar funções (Tool Usage/Function Calling). O atacante introduz instruções ocultas num currículo em PDF (Injeção Indireta). Quando o recrutador pede ao bot para resumir o PDF, a instrução oculta força o bot a utilizar a sua integração de API elevada para transferir fundos ou excluir arquivos do sistema.",
+      "countermeasures": [
+        "Tratar a IA e os Agentes Autônomos como vetores \"Não Confiáveis\" (Zero Trust): qualquer invocação de ferramentas ou execução de código gerado pelo modelo tem de ser tratada como input arriscado do usuário, aplicando limites estritos (Sandboxing) e aprovação de ação no ciclo final (Human-in-the-Loop) para operações críticas."
+      ]
+    }
+  ]
+}

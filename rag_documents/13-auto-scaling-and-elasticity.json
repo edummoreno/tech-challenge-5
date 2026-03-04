@@ -1,0 +1,66 @@
+{
+  "class_id": "13",
+  "class_name": "Auto Scaling and Elasticity",
+  "description": "Esta classe gerencia a capacidade computacional dinâmica, adicionando ou removendo instâncias baseadas na demanda de tráfego. Embora garanta disponibilidade, falhas de configuração aqui podem ser exploradas para causar prejuízos financeiros massivos (ataques de exaustão de carteira) ou para introduzir configurações e instâncias maliciosas de forma automatizada.",
+  "components": [
+    "aws_auto_scaling",
+    "aws_autoscaling",
+    "aws_ec2_auto_scaling",
+    "azure_vm_scale_sets"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de métricas customizadas para forçar escalonamento indevido.",
+      "scenario": "Como as métricas nativas do provedor (ex: uso de CPU do hypervisor) são invioláveis, o atacante foca em comprometer o agente de telemetria ou a API da aplicação para enviar 'Métricas Customizadas' falsas (ex: reportar que há 0 sessões ativas). Isso engana o grupo de Auto Scaling forçando um Scale-in (redução) agressivo que derruba a aplicação.",
+      "countermeasures": [
+        "Autenticar rigorosamente as origens de métricas customizadas, aceitando apenas dados de instâncias ou serviços com identidades gerenciadas validadas.",
+        "Sempre que possível, basear políticas de escalonamento em métricas nativas e agregadas pelo Load Balancer (ex: RequestCountPerTarget) em vez de métricas geradas internamente pelo software da instância."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Alteração de Launch Templates ou User Data para injetar código malicioso.",
+      "scenario": "Um invasor altera o Launch Template do Auto Scaling para incluir um script de inicialização que baixa um malware ou altera a imagem base (AMI) para uma controlada por ele. Toda nova máquina instanciada já nascerá comprometida.",
+      "countermeasures": [
+        "Gerenciar Launch Templates estritamente via Infraestrutura como Código (IaC) com versionamento obrigatório.",
+        "Restringir severamente as permissões de atualização de configurações de Auto Scaling e de uso da permissão iam:PassRole."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Alterações manuais nos limites de escalonamento sem rastreabilidade.",
+      "scenario": "Um administrador altera manualmente o limite máximo do grupo de escalonamento de 10 para 100 instâncias, gerando uma fatura enorme no fim do mês. Sem logs claros, a empresa não consegue identificar quem fez a alteração.",
+      "countermeasures": [
+        "Habilitar auditoria contínua (CloudTrail / Azure Activity Log) para todas as chamadas de API direcionadas aos serviços de escalonamento.",
+        "Bloquear edições manuais no console, forçando todas as alterações de capacidade máxima/mínima a passarem por pipelines rastreáveis."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição de segredos através de scripts de inicialização (User Data).",
+      "scenario": "Senhas de banco de dados ou chaves de API são colocadas em texto claro no User Data do Launch Template para configurar as novas instâncias. Qualquer usuário com permissão de leitura nas configurações do Auto Scaling consegue roubar essas credenciais.",
+      "countermeasures": [
+        "Remover completamente segredos codificados de scripts de inicialização.",
+        "Fazer com que a instância puxe os segredos dinamicamente de um Key Vault ou Secrets Manager durante o boot, utilizando a identidade gerenciada da máquina."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Negação de Carteira (Economic Denial of Sustainability - EEDoS).",
+      "scenario": "O atacante gera tráfego volumétrico constante que não derruba a aplicação, mas força o Auto Scaling a operar constantemente em sua capacidade máxima, causando exaustão financeira (billing) na conta de nuvem.",
+      "countermeasures": [
+        "Definir limites máximos de capacidade (Max Size) restritos e baseados no orçamento e no comportamento histórico do negócio.",
+        "Implementar um Web Application Firewall (WAF) com limitação de taxa agressiva à frente do balanceador de carga para absorver picos anômalos antes que afetem as métricas de CPU do backend."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Instâncias nascendo com privilégios excessivos devido a políticas globais frouxas.",
+      "scenario": "O grupo de Auto Scaling está configurado para associar uma Role que tem permissões amplas de administrador na nuvem. Um atacante que compromete uma aplicação web básica nessas instâncias ganha, automaticamente, controle sobre o ambiente inteiro.",
+      "countermeasures": [
+        "Aplicar o Princípio do Menor Privilégio na criação do perfil de instância (Instance Profile/Managed Identity) associado ao grupo de Auto Scaling, limitando-o exclusivamente ao necessário para aquela aplicação rodar."
+      ]
+    }
+  ]
+}

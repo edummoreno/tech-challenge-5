@@ -1,0 +1,58 @@
+{
+  "class_id": "37",
+  "class_name": "External SaaS Services",
+  "description": "Os serviços SaaS de terceiros (ex: Salesforce, Slack, GitHub) integram-se profundamente na arquitetura da empresa. Estes serviços compartilham e recebem dados através de APIs, expandindo consideravelmente a fronteira de confiança. Um SaaS comprometido pode atuar como um \"Cavalo de Troia\", injetando comandos ou exfiltrando dados de forma aparentemente legítima.",
+  "components": [
+    "sass_services"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Roubo de Chaves de API do fornecedor SaaS.",
+      "scenario": "A chave de API utilizada pela sua empresa para enviar notificações para um fornecedor de SMS externo vaza. Um atacante utiliza essa chave para enviar milhares de mensagens em nome da empresa para realizar esquemas de phishing contra os seus clientes, com o custo debitado à sua organização.",
+      "countermeasures": [
+        "Evitar chaves estáticas vitalícias; implementar rotação frequente de chaves e utilizar conectores baseados em OAuth com tokens de curta duração para integração com serviços externos."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Ataque à Cadeia de Suprimentos injetando dados corrompidos.",
+      "scenario": "Um sistema SaaS de gerenciamento de inventário sofre um ciberataque nos seus próprios servidores. O atacante manipula a API do SaaS para retornar valores corrompidos (ex: preços negativos) aos sistemas internos da sua empresa, desestabilizando a lógica financeira e causando perdas transacionais imediatas.",
+      "countermeasures": [
+        "Tratar as respostas de integração de APIs de terceiros como não confiáveis, implementando validação rigorosa de esquema (Schema Validation) e lógicas de limites de aceitabilidade (Sanity Checks) antes de processar os dados recebidos do SaaS."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Falta de auditoria nos registros do serviço gerenciado por terceiros.",
+      "scenario": "Ocorre um vazamento de dados de clientes armazenados no CRM em nuvem (SaaS). A sua organização precisa investigar o ocorrido, mas o fornecedor do serviço não fornece a exportação detalhada de registros de auditoria, impossibilitando a compreensão de que dados foram especificamente acessados e como.",
+      "countermeasures": [
+        "Exigir contratualmente e configurar a exportação dos eventos e registros de auditoria do fornecedor SaaS para o SIEM local da empresa."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Integrações não controladas (Shadow IT) compartilhando dados corporativos.",
+      "scenario": "Funcionários utilizam as credenciais corporativas via OAuth para dar acesso a um serviço SaaS não aprovado (ex: um suplemento ou bot não verificado). Este serviço obtém permissão para ler todos os arquivos do armazenamento na nuvem ou ler e-mails, exfiltrando propriedade intelectual para fora do controle da TI.",
+      "countermeasures": [
+        "Desativar a capacidade dos usuários finais autorizarem aplicativos de terceiros (Enterprise Apps/OAuth apps) no diretório da empresa sem aprovação prévia de segurança."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Falhas em cascata originadas pelo prestador de serviços.",
+      "scenario": "O fornecedor do serviço de pagamentos ou o provedor SaaS central fica offline. A aplicação interna, dependente e mal construída (comunicações síncronas com tempos limite longos), bloqueia à espera da resposta do parceiro, provocando a interrupção total dos serviços internos em cadeia.",
+      "countermeasures": [
+        "Implementar padrões arquiteturais resilientes, como o Circuit Breaker, e mecanismos de comunicação assíncrona para isolar falhas de terceiros e permitir a degradação suave do sistema interno."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Concessão excessiva de escopos de API para aplicativos SaaS.",
+      "scenario": "Um fornecedor de serviço externo necessita de ler informações do calendário dos colaboradores, mas durante a configuração a empresa autoriza a permissão genérica Directory.ReadWrite.All. Se o fornecedor for invadido, os cibercriminosos herdam a capacidade de reescrever dados no diretório principal da empresa.",
+      "countermeasures": [
+        "Aplicar de forma draconiana o Princípio do Menor Privilégio na autorização de escopos OAuth/API, revisando periodicamente os níveis de acesso de todos os aplicativos empresariais interligados."
+      ]
+    }
+  ]
+}

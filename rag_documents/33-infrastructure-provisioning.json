@@ -1,0 +1,64 @@
+{
+  "class_id": "33",
+  "class_name": "Infrastructure Provisioning",
+  "description": "Ferramentas de Infraestrutura como Código (IaC) automatizam a construção da nuvem (CloudFormation, Terraform). O grande desafio desta classe é a concentração de poder: como o IaC precisa criar redes, bancos e permissões, a \"Role de Execução\" associada a essa ferramenta frequentemente possui os privilégios mais altos do ambiente (AdministratorAccess). Falhas aqui inserem vulnerabilidades estruturais na raiz do negócio.",
+  "components": [
+    "aws_cloudformation",
+    "aws_cloudformation_template"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Submissão de templates por origens ou pipelines não autorizados.",
+      "scenario": "Um atacante obtém acesso a um token de Deploy antigo. Ele usa essa credencial falsificando a identidade do pipeline de CI/CD principal para submeter um template malicioso direto na API do CloudFormation, bypassando a esteira oficial de aprovação e os testes de segurança automatizados.",
+      "countermeasures": [
+        "Adotar integrações seguras de identidade (como OpenID Connect - OIDC) entre o provedor de CI/CD (GitHub/GitLab) e a nuvem, eliminando chaves estáticas.",
+        "Assinar digitalmente os commits e os artefatos de infraestrutura garantindo que a nuvem só implante templates autenticados."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção de configurações inseguras (IaC Tampering).",
+      "scenario": "Um invasor interno comita uma pequena alteração no arquivo do CloudFormation, adicionando a regra 0.0.0.0/0 na porta de banco de dados ou tornando um S3 público. A esteira aplica o template automaticamente, criando vulnerabilidades graves diretamente na produção.",
+      "countermeasures": [
+        "Implementar ferramentas rigorosas de Análise Estática de Código de Infraestrutura (SAST IaC - ex: tfsec, checkov) na esteira, falhando o deploy se desvios de segurança forem detectados no template.",
+        "Exigir regras de revisão de código cruzada (Pull Requests/Merge Requests) aprovadas por pares antes da execução em produção."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Edições manuais na nuvem criando desvios de estado (Configuration Drift).",
+      "scenario": "Durante a madrugada, um administrador com acesso manual à nuvem altera as portas do firewall por emergência e esquece de voltar ao normal. Essa alteração (ClickOps) não está documentada em código e fica invisível nos repositórios, dificultando a rastreabilidade da origem da vulnerabilidade meses depois.",
+      "countermeasures": [
+        "Remover permissões de acesso de escrita em produção para usuários humanos, forçando todas as mudanças a ocorrerem via pipeline de IaC.",
+        "Habilitar e monitorar os recursos de detecção de desvio (Drift Detection) nos stacks de infraestrutura."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição de senhas e dados nos Templates ou Arquivos de Estado.",
+      "scenario": "Senhas de administração de bancos de dados são injetadas em texto claro dentro dos templates do CloudFormation. Essas senhas acabam sendo exibidas no painel do console na aba de \"Parâmetros\" e salvas no histórico de estado do provedor, visíveis para qualquer usuário com permissões de leitura do ambiente.",
+      "countermeasures": [
+        "Utilizar atributos seguros na IaC (como NoEcho no CloudFormation) para impedir a exibição de parâmetros no console.",
+        "Substituir valores fixos por referências dinâmicas a gerenciadores de segredos nativos, que são resolvidos apenas no momento crítico da inicialização do recurso."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Destruição acidental ou maliciosa das pilhas (Stacks) de fundação.",
+      "scenario": "Um engenheiro novato (ou cibercriminoso) exclui a \"Stack Principal\" que define a VNet e o Banco de Dados. A ferramenta obedece prontamente, iniciando o processo de exclusão em cascata, apagando o banco de dados e removendo as redes da aplicação em minutos, gerando downtime crítico e perda de dados.",
+      "countermeasures": [
+        "Habilitar proteção contra término (Termination Protection) nas Stacks críticas de infraestrutura.",
+        "Configurar políticas de exclusão (DeletionPolicy: Retain ou Snapshot) nos recursos de dados (como bancos e discos), impedindo a destruição da informação mesmo se o template for deletado."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Criação de Roles para escalada de privilégios (Execution Role Escalation).",
+      "scenario": "A ferramenta de provisionamento opera com direitos de criar permissões no IAM. Um desenvolvedor edita o template criando uma nova conta IAM para ele mesmo contendo as políticas de AdministratorAccess. A ferramenta, possuindo essa autorização e ignorando limites, implanta a Role com sucesso e o desenvolvedor toma conta do ambiente.",
+      "countermeasures": [
+        "Exigir uso de Permissions Boundaries (Limites de Permissões), assegurando que o IaC não consiga criar usuários ou funções com privilégios maiores que os estipulados em um teto máximo de segurança pela equipe de arquitetura."
+      ]
+    }
+  ]
+}

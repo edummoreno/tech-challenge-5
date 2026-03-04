@@ -1,0 +1,64 @@
+{
+  "class_id": "22",
+  "class_name": "NoSQL Databases",
+  "description": "Bancos de dados NoSQL gerenciados oferecem escalabilidade massiva, baixa latência e flexibilidade de esquema (schema-less). Como geralmente são acessados diretamente via APIs HTTP em vez de conexões persistentes tradicionais, a fronteira de segurança sai da \"porta de rede\" (TCP) e vai direto para a camada de Identidade e Acesso (IAM/RBAC). Erros de permissão aqui expõem o banco inteiro para a internet instantaneamente.",
+  "components": [
+    "aws_dynamodb",
+    "aws_dynamodb_table",
+    "azure_cosmos_db"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Acesso à API do banco de dados utilizando credenciais forjadas ou roubadas.",
+      "scenario": "O serviço de backend utiliza chaves estáticas (Access Keys) para acessar o DynamoDB ou Cosmos DB. Essas chaves vazam. O atacante faz requisições HTTP autenticadas de sua própria máquina diretamente para a API pública do provedor de nuvem, passando-se pela aplicação.",
+      "countermeasures": [
+        "Eliminar o uso de chaves estáticas; utilizar Identidades Gerenciadas (Managed Identities / IAM Roles) atreladas à computação que executa a aplicação.",
+        "Configurar restrições de rede nativas (VPC Endpoints / PrivateLink) para que a API do banco NoSQL só aceite requisições originadas de dentro da sua rede privada virtual."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção NoSQL e manipulação de atributos flexíveis.",
+      "scenario": "Como o banco não exige um esquema fixo, a aplicação web vulnerável permite que um atacante injete atributos JSON não esperados (como \"isAdmin\": true) durante a criação de um perfil de usuário (PutItem). O banco aceita o dado sem reclamar, e a aplicação passa a tratar o invasor como administrador.",
+      "countermeasures": [
+        "Realizar validação rigorosa de esquema (Schema Validation) e sanitização na camada de código da aplicação antes de enviar os dados ao banco.",
+        "Utilizar operações de atualização condicional (Conditional Updates) para evitar que registros sejam sobrescritos indevidamente por chamadas concorrentes."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Alteração de itens críticos sem rastreabilidade do plano de dados.",
+      "scenario": "Uma tabela crítica de configurações financeiras tem seus valores zerados. Como os logs de auditoria estão ativados apenas para o plano de controle (criação/exclusão de tabelas), não há registro sobre quem executou a chamada de UpdateItem ou DeleteItem, impossibilitando a investigação do incidente.",
+      "countermeasures": [
+        "Habilitar os logs de eventos de dados (Data Plane Events, ex: CloudTrail Data Events) para tabelas sensíveis, registrando toda atividade de leitura e gravação em nível de item."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exfiltração massiva através de leituras irrestritas (Scans).",
+      "scenario": "Um desenvolvedor ou serviço comprometido com permissão genérica de leitura executa uma operação de varredura completa (Scan) em vez de uma consulta específica (Query). Isso puxa todo o conteúdo da tabela de usuários (incluindo PII) para a memória de um servidor intermediário, que então é exfiltrado.",
+      "countermeasures": [
+        "Aplicar Controle de Acesso em Nível de Linha ou Atributo (ex: IAM Condition Keys como dynamodb:LeadingKeys) para garantir que os usuários só possam ler os registros que lhes pertencem.",
+        "Bloquear explicitamente a permissão de Scan na política do IAM/RBAC para aplicações produtivas."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão de capacidade provisionada (Throttling / Hot Partitions).",
+      "scenario": "Um atacante descobre como a chave de partição (Partition Key) é formada e envia milhares de requisições pesadas focadas em uma única chave. Isso cria uma \"Partição Quente\", esgotando os limites de leitura/gravação daquela partição específica e derrubando as operações dos usuários legítimos.",
+      "countermeasures": [
+        "Desenhar o modelo de dados utilizando chaves de partição de alta cardinalidade para garantir uma distribuição uniforme do tráfego.",
+        "Configurar escalonamento automático (Auto Scaling) ou modo sob demanda (On-Demand) para absorver picos repentinos sem causar quedas por Throttling."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Acesso cruzado a tabelas não autorizadas por políticas excessivas.",
+      "scenario": "A política de acesso associada a um microsserviço menor concede a permissão dynamodb:* no recurso *. Ao comprometer esse pequeno serviço, o cibercriminoso ganha permissão total para deletar ou ler as tabelas primárias do núcleo financeiro da empresa.",
+      "countermeasures": [
+        "Restringir permissões seguindo o princípio do menor privilégio, declarando não apenas as ações exatas (GetItem, PutItem), mas também limitando o escopo ao Amazon Resource Name (ARN) específico da tabela alvo."
+      ]
+    }
+  ]
+}

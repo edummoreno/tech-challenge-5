@@ -1,0 +1,68 @@
+{
+  "class_id": "17",
+  "class_name": "Object Storage",
+  "description": "O armazenamento de objetos é utilizado para guardar dados não estruturados (arquivos, documentos, mídias, backups) em larguíssima escala. Por frequentemente ser acessível via internet e possuir políticas de acesso flexíveis, falhas de configuração nesta classe (como buckets deixados abertos ao público) são historicamente as causas mais comuns dos maiores vazamentos de dados do mundo.",
+  "components": [
+    "aws_simple_storage_service",
+    "aws_simple_storage_service_bucket",
+    "aws_simple_storage_service_bucket_with_objects",
+    "aws_simple_storage_service_s3_standard",
+    "aws_simple_storage_service_object",
+    "azure_storage_accounts",
+    "gcp_cloud_storage"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Roubo ou uso indevido de URLs pré-assinadas (Presigned URLs).",
+      "scenario": "A aplicação gera um link de acesso temporário (URL assinada) para o usuário baixar um relatório confidencial, mas configura uma validade muito longa (ex: 7 dias). O link vaza em um fórum e terceiros não autenticados conseguem baixar o arquivo forjando a autorização do usuário original.",
+      "countermeasures": [
+        "Configurar tempos de expiração curtíssimos (ex: 5 a 15 minutos) para as URLs assinadas.",
+        "Quando suportado, restringir a validade da URL pré-assinada ao endereço IP específico que a solicitou."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Sobrescrita maliciosa de objetos ou injeção de malware.",
+      "scenario": "Um bucket hospeda os arquivos JavaScript (estáticos) do portal de e-commerce. Um atacante obtém permissão de gravação (PutObject), substitui o código legítimo por um script que rouba dados de cartão de crédito e a aplicação passa a servir o código envenenado.",
+      "countermeasures": [
+        "Habilitar o versionamento de objetos (Object Versioning) para garantir a recuperação de arquivos sobrescritos ou deletados.",
+        "Impor políticas rigorosas de bloqueio e exigir autenticação multifator (MFA Delete) para a exclusão permanente de versões de objetos críticos."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Acesso a dados confidenciais sem rastreabilidade do plano de dados.",
+      "scenario": "Ocorre um vazamento de documentos médicos armazenados no provedor. Como apenas as alterações de configuração (Control Plane) eram auditadas, não há registros de qual endereço IP baixou os arquivos, impossibilitando a investigação.",
+      "countermeasures": [
+        "Habilitar os logs de acesso ao servidor do bucket (Server Access Logging) ou rastreamento completo de eventos de plano de dados (ex: Data Plane logs no CloudTrail)."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição pública acidental de contêineres de dados.",
+      "scenario": "Um engenheiro desativa temporariamente a política de segurança do bucket para realizar testes e esquece de ativá-la novamente. O bucket se torna acessível a qualquer pessoa na internet (Principal: * com GetObject), expondo o banco de dados de clientes.",
+      "countermeasures": [
+        "Ativar as configurações globais de Bloqueio de Acesso Público (Block Public Access) diretamente no nível da conta de nuvem.",
+        "Utilizar ferramentas de Gestão da Postura de Segurança na Nuvem (CSPM) para monitorar e reverter automaticamente permissões de leitura pública em buckets."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão financeira via requisições massivas (Ransomcloud).",
+      "scenario": "Um atacante descobre um bucket exposto com permissões de gravação. Ele orquestra um botnet para realizar milhões de requisições do tipo PUT, inflando massivamente a conta de armazenamento (billing) e ameaçando causar danos financeiros irreparáveis.",
+      "countermeasures": [
+        "Esconder o acesso direto ao bucket colocando-o atrás de uma Rede de Distribuição de Conteúdo (CDN) acoplada a um WAF.",
+        "Configurar alarmes proativos de faturamento e alertas de anomalia baseados no custo e na quantidade de requisições de armazenamento."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Acesso indevido via políticas cruzadas e falta de isolamento.",
+      "scenario": "A política do bucket permite o acesso de qualquer entidade autenticada no provedor em nuvem em vez de restringir especificamente à organização. Um cibercriminoso, usando sua própria conta legítima e barata na mesma nuvem, consegue acessar os dados livremente.",
+      "countermeasures": [
+        "Condicionar estritamente o acesso nas Políticas de Bucket (Bucket Policies), exigindo que os chamadores pertençam ao ID da Organização (Organization ID) ou à conta corporativa específica, negando o acesso de inquilinos de terceiros."
+      ]
+    }
+  ]
+}

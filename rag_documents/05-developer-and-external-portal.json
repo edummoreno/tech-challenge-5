@@ -1,0 +1,58 @@
+{
+  "class_id": "05",
+  "class_name": "Developer and External Portal",
+  "description": "Esta classe representa a interface onde desenvolvedores externos ou parceiros se cadastram, leem documentações de APIs (Swagger/OpenAPI) e geram suas credenciais (API Keys, Client Secrets).",
+  "components": [
+    "developer_portal"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Atacante cria contas falsas para obter chaves de API legítimas.",
+      "scenario": "Um atacante utiliza emails temporários e scripts automatizados para criar centenas de contas de desenvolvedor no portal. Com as chaves de API geradas, ele consegue burlar os limites de taxa (Rate Limiting) do API Gateway diluindo os ataques entre múltiplas identidades.",
+      "countermeasures": [
+        "Implementar CAPTCHA no registro, exigir verificação de email corporativo e, para APIs críticas, instituir um fluxo de aprovação manual (manual onboarding) antes da liberação das chaves produtivas."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Manipulação do conteúdo do portal ou injeção de código malicioso.",
+      "scenario": "O portal de desenvolvedores possui um fórum ou área de suporte. Um atacante encontra uma falha de Cross-Site Scripting (XSS) e injeta um script. Quando um administrador acessa a página, o script rouba a sessão do admin ou aprova automaticamente as chaves de API do atacante.",
+      "countermeasures": [
+        "Aplicar sanitização rigorosa de entrada em todos os campos do portal, codificação de saída (Output Encoding) e configurar cabeçalhos de segurança estritos, como o Content Security Policy (CSP)."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Desenvolvedores geram, usam e apagam chaves sem deixar rastros para encobrir abusos.",
+      "scenario": "Um parceiro sofre um vazamento de dados via API. Para se eximir da culpa, o desenvolvedor desse parceiro entra no portal, rotaciona a API Key vazada e exclui a antiga. Sem logs de auditoria no portal, a empresa não consegue provar que a chave original pertencia àquele parceiro no momento do vazamento.",
+      "countermeasures": [
+        "Registrar todos os eventos de ciclo de vida de credenciais (criação, rotação, exclusão) em logs imutáveis, vinculados à identidade do usuário que realizou a ação no portal."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exposição acidental de rotas internas ou dados sensíveis na documentação.",
+      "scenario": "O processo de CI/CD atualiza automaticamente a documentação Swagger no portal. Por erro de configuração, o arquivo OpenAPI exposto inclui rotas \"BETA\" ou administrativas internas (ex: /api/v1/internal/debug) que não deveriam ser públicas, dando ao atacante um mapa exato da infraestrutura de backend.",
+      "countermeasures": [
+        "Implementar uma etapa de validação no pipeline que filtre e remova endpoints não públicos das especificações OpenAPI antes da publicação no portal externo."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Sobrecarga dos serviços do portal, impedindo o acesso de parceiros legítimos.",
+      "scenario": "Um botnet realiza Web Scraping agressivo nas páginas de documentação para treinar um modelo de IA, gerando milhares de requisições por minuto que esgotam a CPU do servidor do portal e o tiram do ar.",
+      "countermeasures": [
+        "Colocar o portal atrás de uma CDN e de um WAF (conforme as classes 04 e 07) configurados com regras de proteção contra bots e limitação de taxa (Rate Limiting) agressiva."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Quebra de isolamento lógico (Tenant Isolation), permitindo acesso a dados de outros parceiros.",
+      "scenario": "Uma vulnerabilidade de IDOR (Insecure Direct Object Reference) no painel do desenvolvedor permite que o \"Parceiro A\", ao alterar o ID na URL (/portal/keys?partnerId=123 para 124), consiga visualizar e regenerar as chaves de API do \"Parceiro B\".",
+      "countermeasures": [
+        "Implementar controle de acesso ao nível de dados. O backend do portal deve sempre validar se o token de sessão do usuário logado tem autorização explícita para acessar ou modificar o recurso (ID) solicitado."
+      ]
+    }
+  ]
+}

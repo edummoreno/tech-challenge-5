@@ -1,0 +1,68 @@
+{
+  "class_id": "20",
+  "class_name": "Relational Databases",
+  "description": "Os bancos de dados relacionais gerenciados (PaaS) são o coração transacional das aplicações. Eles contêm os dados mais valiosos e estruturados da empresa (informações financeiras, PII, registros de saúde). A segurança foca em isolamento de rede restrito, proteção rigorosa contra injeções vindas da camada de aplicação e criptografia robusta dos dados em repouso e em trânsito.",
+  "components": [
+    "aws_aurora_amazon_rds_instance",
+    "aws_rds",
+    "azure_sql",
+    "azure_sql_database",
+    "azure_sql_server",
+    "gcp_cloud_sql"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Falsificação de conexões ao banco de dados via roubo de credenciais (Connection String Leak).",
+      "scenario": "A string de conexão com usuário e senha fixos vaza no código-fonte. Um atacante utiliza essas credenciais e tenta se conectar ao banco de dados diretamente através da internet para realizar consultas e extrair a tabela de clientes.",
+      "countermeasures": [
+        "Eliminar a autenticação por senha estática; utilizar integrações nativas de Autenticação baseada em Identidade (IAM DB Authentication ou Azure AD) com tokens de curta duração.",
+        "Retirar o banco de dados de sub-redes públicas (bloquear IPs públicos) e permitir acesso apenas de Security Groups atrelados à camada de aplicação."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Injeção de SQL (SQLi) ou manipulação direta de registros.",
+      "scenario": "Uma aplicação web vulnerável falha na sanitização de dados do usuário. O atacante envia um payload malicioso no campo de login (' OR 1=1; DROP TABLE Users; --), o banco de dados processa o comando, corrompendo a integridade do sistema e apagando tabelas críticas.",
+      "countermeasures": [
+        "Forçar a utilização de Prepared Statements (Consultas Parametrizadas) ou ORMs na camada de código da aplicação.",
+        "Implantar um WAF na borda da aplicação para interceptar e bloquear padrões conhecidos de ataques de injeção de SQL."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Alterações manuais em tabelas produtivas sem rastreabilidade do autor.",
+      "scenario": "Um Administrador de Banco de Dados (DBA) se conecta ao ambiente de produção e atualiza saldos financeiros manualmente via terminal. Por preocupações com desempenho, o log de auditoria do banco está desativado. Não é possível provar legalmente quem fez a transação.",
+      "countermeasures": [
+        "Habilitar auditoria nativa do mecanismo do banco (ex: pgAudit no PostgreSQL ou SQL Server Audit) e enviar os logs para uma solução de observabilidade central.",
+        "Revogar acesso direto de escrita na produção para DBAs, exigindo que toda modificação de esquema ou dados passe por pipelines de automação controlados."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Exfiltração de banco de dados por configurações fracas de criptografia ou rede.",
+      "scenario": "O tráfego entre os contêineres de backend e a instância RDS ocorre em texto plano na rede interna. Um invasor realiza um sniffing na VNet, intercepta os pacotes TDS/PostgreSQL e reconstrói as consultas de dados confidenciais trafegados.",
+      "countermeasures": [
+        "Forçar obrigatoriamente a conexão via TLS (ex: rds.force_ssl=1 na AWS ou Enforce SSL no Azure), recusando qualquer conexão não criptografada.",
+        "Habilitar a Criptografia em Repouso nativa (KMS/TDE) no provisionamento da instância."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Exaustão de recursos por consultas pesadas ou ataques de conexão.",
+      "scenario": "Um atacante descobre um filtro de pesquisa de produtos não indexado. Ele dispara requisições automatizadas complexas, elevando a CPU do banco de dados a 100% e consumindo todas as conexões disponíveis no pool, impedindo que a aplicação atenda aos clientes legítimos.",
+      "countermeasures": [
+        "Implementar réplicas de leitura (Read Replicas) para segregar o tráfego de pesquisa pesada do nó de gravação principal.",
+        "Configurar limites de tempo de execução de consulta (Query Timeouts) no banco e Rate Limiting rigoroso nas APIs que expõem buscas complexas."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Aplicação executando com privilégios de dono (Owner/SA) do banco de dados.",
+      "scenario": "O microsserviço de \"Catálogo\" se conecta ao banco de dados usando o usuário principal (sa ou postgres). Ao explorar uma vulnerabilidade na API de Catálogo, o atacante herda os privilégios máximos no banco, conseguindo ler, alterar ou deletar tabelas de outros microsserviços (como \"Pagamentos\").",
+      "countermeasures": [
+        "Implementar um RBAC estrito no nível do banco de dados: cada microsserviço deve possuir um usuário próprio que tenha permissões de SELECT/INSERT/UPDATE exclusivamente nas tabelas que lhe pertencem."
+      ]
+    }
+  ]
+}

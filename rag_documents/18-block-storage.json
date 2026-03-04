@@ -1,0 +1,63 @@
+{
+  "class_id": "18",
+  "class_name": "Block Storage",
+  "description": "O armazenamento em bloco provê os volumes de discos rígidos persistentes atrelados diretamente às instâncias de computação (Máquinas Virtuais). Eles contêm os sistemas operacionais, o software da aplicação e frequentemente os dados dos bancos de dados em execução. A segurança aqui orbita a proteção dos dados em repouso por meio da criptografia e o controle rígido sobre quem tem o poder de criar, clonar ou mover esses discos (snapshots).",
+  "components": [
+    "aws_elastic_block_store",
+    "aws_elastic_block_store_volume"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Anexação de volume a uma instância não autorizada.",
+      "scenario": "Um volume EBS contendo logs sensíveis é desanexado para manutenção. O atacante, com acesso ao console, anexa esse disco a uma instância EC2 que ele controla, passando-se pela máquina legítima para acessar os arquivos internos diretamente no nível do sistema de arquivos.",
+      "countermeasures": [
+        "Restringir severamente a permissão de anexar volumes (AttachVolume) via políticas IAM.",
+        "Forçar o uso de chaves criptográficas gerenciadas (KMS). Um volume encriptado atrelado a uma chave específica não poderá ser lido, mesmo anexado, se a instância invasora não tiver permissão para usar aquela chave."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Alteração de discos e injeção de ameaças persistentes.",
+      "scenario": "Um atacante gera um snapshot do disco principal de um servidor, injeta um usuário root e uma backdoor SSH dentro dessa imagem, e então solicita a restauração do servidor a partir desse disco adulterado, ganhando acesso profundo e persistente.",
+      "countermeasures": [
+        "Implementar verificações de integridade nos processos de boot (ex: Secure Boot e vTPM) utilizando instâncias modernas (Confidential Computing/Trusted Launch) que suportem esses recursos.",
+        "Adotar processos rigorosos e com múltiplas aprovações para a restauração e implantação de imagens e snapshots no ambiente de produção."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Criação e compartilhamento de cópias (snapshots) sem registro.",
+      "scenario": "Um administrador mal-intencionado faz uma cópia (snapshot) do disco do banco de dados e compartilha temporariamente com sua conta pessoal. Ele exfiltra os dados e deleta a cópia sem que alarmes imediatos disparem ou que logs demonstrem claramente o destino do compartilhamento.",
+      "countermeasures": [
+        "Monitorar rigidamente as chamadas de API referentes a modificações de atributos de snapshots (como ModifySnapshotAttribute), focando na identificação de eventos que tornam o disco público ou compartilhado com contas não confiáveis."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Armazenamento de blocos e cópias sem criptografia ativada.",
+      "scenario": "Discos de dados críticos são provisionados sem criptografia ativada. O disco físico subjacente ou um snapshot é acidentalmente exposto ou transferido. Como os dados estão em texto pleno, qualquer um que possua o arquivo consegue ler todo o conteúdo extraído do servidor.",
+      "countermeasures": [
+        "Habilitar a Criptografia por Padrão (Encryption by Default) nas configurações do provedor de nuvem para todas as regiões operacionais.",
+        "Implementar políticas que proíbam a criação de recursos de armazenamento em bloco não criptografados e bloqueiem o trânsito de discos para fora do ambiente gerenciado."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Destruição do disco de armazenamento ou esgotamento de IOPS (Operações de Entrada e Saída).",
+      "scenario": "Um invasor compromete credenciais administrativas e emite comandos de deleção para todos os volumes críticos e seus backups, destruindo a base de dados permanentemente e impossibilitando o funcionamento do sistema operacional dos servidores de negócio.",
+      "countermeasures": [
+        "Proteger planos de backup utilizando serviços de armazenamento em cofre (Vaults com políticas WORM) que impedem a deleção antecipada das cópias de segurança de discos.",
+        "Monitorar continuamente as métricas de leitura e gravação para detectar picos anômalos que busquem exaurir a banda do disco, prejudicando aplicações vizinhas."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Manipulação do volume de inicialização (Boot Volume) para ganho de acesso Root.",
+      "scenario": "Um usuário que possui permissões apenas para manipular serviços de disco (mas não para acessar os servidores) desliga uma máquina virtual, anexa o disco de inicialização dela em outra máquina e altera o arquivo /etc/shadow (que contém os hashes das senhas). Ele retorna o disco para a máquina original e loga nela como administrador total (root).",
+      "countermeasures": [
+        "Unificar o controle de acesso lógico do sistema operacional com a proteção física das instâncias; desenvolvedores que não devem logar nas instâncias não devem ter privilégios para desmontar, montar ou editar discos de boot via console da nuvem."
+      ]
+    }
+  ]
+}

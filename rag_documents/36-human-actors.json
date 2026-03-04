@@ -1,0 +1,60 @@
+{
+  "class_id": "36",
+  "class_name": "Human Actors",
+  "description": "A classe que representa os usuários e administradores do sistema. Os atores humanos são frequentemente o elo mais vulnerável da cadeia de segurança devido à suscetibilidade à engenharia social, fadiga de alarmes e ao cansaço. A segurança aqui foca em políticas de Zero Trust, proteção contra phishing e monitoramento de ameaças internas (Insider Threats).",
+  "components": [
+    "user"
+  ],
+  "stride_analysis": [
+    {
+      "type": "Spoofing",
+      "threat": "Roubo de credenciais via Phishing ou reuso de senhas.",
+      "scenario": "Um colaborador cai em um esquema de e-mail phishing direcionado (Spear Phishing) ou utiliza a mesma senha corporativa em um serviço de terceiros que sofreu uma violação. O atacante acessa a rede VPN ou os portais internos da empresa utilizando a identidade legítima do usuário.",
+      "countermeasures": [
+        "Eliminar a confiança baseada apenas na senha, implementando a autenticação sem senha (Passwordless) ou exigindo chaves FIDO2.",
+        "Promover programas contínuos de conscientização de segurança cibernética e treinamentos de simulação de phishing."
+      ]
+    },
+    {
+      "type": "Tampering",
+      "threat": "Ameaça Interna (Insider Threat) adulterando dados de negócio.",
+      "scenario": "Um funcionário insatisfeito que está prestes a abandonar a organização acessa os sistemas em que possui privilégios de gerenciamento e começa a alterar deliberadamente registros de clientes ou a apagar arquivos críticos para prejudicar a empresa.",
+      "countermeasures": [
+        "Implementar princípios de separação de funções (Segregation of Duties - SoD) para que nenhuma pessoa consiga realizar uma transação crítica ou destrutiva do início ao fim sem a aprovação de um par.",
+        "Utilizar sistemas de Análise de Comportamento de Usuários (UEBA) para detectar desvios anômalos nos padrões de utilização diários."
+      ]
+    },
+    {
+      "type": "Repudiation",
+      "threat": "Utilização de contas compartilhadas e compartilhamento de credenciais.",
+      "scenario": "Uma equipe de suporte utiliza uma única conta compartilhada (admin-suporte@empresa.com) para acessar o sistema de gerenciamento de usuários. Ocorre um vazamento de dados através dessa conta e não é possível auditar ou provar qual dos operadores de turno executou a ação maliciosa.",
+      "countermeasures": [
+        "Proibir administrativamente e tecnicamente a criação de contas compartilhadas; toda ação no sistema tem que estar ligada a um indivíduo único."
+      ]
+    },
+    {
+      "type": "Information Disclosure",
+      "threat": "Vazamento de dados através de dispositivos não gerenciados (BYOD mal configurado).",
+      "scenario": "Um gestor baixa relatórios financeiros confidenciais (PII) do sistema para o seu notebook pessoal ou smartphone não gerenciado. O dispositivo é perdido, roubado ou comprometido por malware pessoal, resultando no vazamento dos dados da empresa.",
+      "countermeasures": [
+        "Implementar soluções de Gerenciamento de Dispositivos Móveis (MDM/MAM) e políticas de Prevenção de Perda de Dados (DLP) que impeçam a cópia ou o download de dados sensíveis para equipamentos não reconhecidos ou fora do perímetro lógico corporativo."
+      ]
+    },
+    {
+      "type": "Denial of Service",
+      "threat": "Bloqueio de contas por força bruta forçada.",
+      "scenario": "Um atacante descobre a lista de e-mails corporativos da liderança e executa um ataque de força bruta desenhado especificamente para falhar a senha diversas vezes. Isso aciona as regras de bloqueio automático do diretório (Account Lockout), impedindo os executivos legítimos de iniciarem sessão.",
+      "countermeasures": [
+        "Utilizar proteção inteligente contra bloqueios extrínsecos (ex: bloqueio de endereços IP suspeitos no nível de identidade ou exigência de CAPTCHA) sem bloquear instantaneamente a conta do usuário alvo."
+      ]
+    },
+    {
+      "type": "Elevation of Privilege",
+      "threat": "Engenharia Social sobre equipes de Helpdesk.",
+      "scenario": "O cibercriminoso liga para o suporte técnico de TI (Helpdesk) passando-se por um executivo (utilizando Deepfake de voz ou dados extraídos da internet). O atacante convence o operador de suporte a redefinir a senha ou o dispositivo de MFA do \"executivo\" para o controle do atacante.",
+      "countermeasures": [
+        "Estabelecer processos rigorosos e protocolos criptográficos ou códigos de segurança verbais para verificação da identidade do usuário em chamadas de redefinição de credenciais junto da equipe de suporte."
+      ]
+    }
+  ]
+}
