@@ -24,7 +24,7 @@ data/
 datasets/
 
 # Artefatos pesados do YOLO (treino)
-resultados_yolo/
+#resultados_yolo/
 **/runs/
 **/train_batch*.jpg
 **/val_batch*.jpg
