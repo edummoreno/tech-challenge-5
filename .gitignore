@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+.env
+
+# Jupyter / Colab
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Dados grandes (NÃO versionar)
+dataset/
+yolo_dataset/
+data/
+datasets/
+
+# Artefatos pesados do YOLO (treino)
+resultados_yolo/
+**/runs/
+**/train_batch*.jpg
+**/val_batch*.jpg
+
+# Outputs 
+# imagens/imagens_yolo_*/
+# reports/relatorio_stride_*.pdf
+
+# Segredos
+*secrets*
+*apikey*
