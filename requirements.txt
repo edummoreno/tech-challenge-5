@@ -1,0 +1,5 @@
+ultralytics
+openai
+reportlab
+pandas
+openpyxl
