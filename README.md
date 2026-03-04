@@ -54,8 +54,6 @@ Este projeto automatiza a modelagem de ameaças em diagramas de arquitetura:
 No notebook `scripts/main.ipynb`, a chave é lida via Secret do Colab e setada em variável de ambiente:
 - `OPENAI_API_KEY`
 
-> Nunca commite a chave no repositório.
-
 ---
 
 ## 🧠 Como o relatório STRIDE é gerado
@@ -69,31 +67,33 @@ Para cada imagem:
 
 ---
 
-## 🗃️ Datasets / arquivos grandes (fora do GitHub)
-Por limite de tamanho, estes itens NÃO ficam no GitHub:
-- Dataset(s) de treino
-- YOLO dataset (labels/imagens)
-- Runs completos do treinamento
+## 🗃️ Datasets (fora do GitHub)
+Por limite de tamanho e por não ser necessário para execução do pipeline, estes itens **não** ficam no GitHub:
+- Dataset original (Kaggle) usado como base
+- `yolo_dataset/` (imagens/labels) usado no treino do YOLO
 
 📌 Link do Drive (preencher):
-- Dataset: [COLE_AQUI_O_LINK_DO_DRIVE]
-- (Opcional) Artefatos de treino: [COLE_AQUI_O_LINK_DO_DRIVE]
+- Dataset (Kaggle exportado / pasta `dataset/`): [COLE_AQUI_O_LINK_DO_DRIVE]
+- YOLO dataset (pasta `yolo_dataset/` com `data.yaml`): [COLE_AQUI_O_LINK_DO_DRIVE]
+
+> Observação: os **pesos e resultados do treino** (curvas/matrizes + `best.pt`) **já estão no repositório** em `resultados_yolo/`.
 
 ---
 
-## ✅ Modelos (YOLO)
-O notebook espera um peso `best.pt`.
+## ✅ Pesos do YOLO 
+O pipeline usa o peso fine-tuned:
+- `resultados_yolo/fine_tuning_train/weights/best.pt`
 
-Opção A (recomendada): versionar só o peso final (≈52MB)
-- Coloque em: `models/best.pt`
-- Ajuste o caminho no notebook (1 linha)
+Se você mover os arquivos de lugar, ajuste o caminho no notebook `scripts/main.ipynb`.
 
-Opção B: manter no Drive e referenciar no notebook
-- Coloque em: `MyDrive/Tech Challenge 5/resultados_yolo/fine_tuning_train/weights/best.pt`
+---
+
+## 🎥 Vídeo de apresentação
+- Link: [COLE_AQUI_O_LINK_DO_VIDEO]
 
 ---
 
 ## 👥 Integrantes
-- Nome 1
-- Nome 2
-- Nome 3
+- SEU NOME
+- NOME DO COLEGA 1
+- NOME DO COLEGA 2
